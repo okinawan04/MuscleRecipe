@@ -1,6 +1,3 @@
-/// 筋トレデータモデル定義ファイル
-library training_models;
-
 /// 身体部位の列挙型
 enum BodyPart {
   chest('胸'),

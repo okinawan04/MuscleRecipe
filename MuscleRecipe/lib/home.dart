@@ -30,13 +30,13 @@ class _HomePageState extends State<HomePage> {
             // Header
             Container(
               color: AppColors.backgroundColor,
-              padding: const EdgeInsets.only(top: 40, bottom: 20),
+              padding: const EdgeInsets.only(top: 32, bottom: 16),
               child: Column(
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 20),
+                      padding: const EdgeInsets.only(left: 16),
                       child: const Text(
                         'Muscle memory',
                         style: AppTextStyles.pageTitle,
@@ -79,7 +79,7 @@ class _HomePageState extends State<HomePage> {
             // Buttons Area
             Container(
               color: AppColors.backgroundColor,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 children: [
                   // Add Menu Button
@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildGraph() {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -227,7 +227,7 @@ class _HomePageState extends State<HomePage> {
         // Month/Year Header
         Container(
           color: AppColors.primaryColor,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -268,7 +268,7 @@ class _HomePageState extends State<HomePage> {
         // Weekday Headers
         Container(
           color: AppColors.primaryColor,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: ['日', '月', '火', '水', '木', '金', '土']
@@ -285,7 +285,7 @@ class _HomePageState extends State<HomePage> {
         Expanded(
           child: Container(
             color: AppColors.primaryColor,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: _buildCalendarGrid(),
           ),
         ),
@@ -317,7 +317,7 @@ class _HomePageState extends State<HomePage> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 1,
+        childAspectRatio: 0.95,
       ),
       itemCount: calendarDays.length,
       itemBuilder: (context, index) {

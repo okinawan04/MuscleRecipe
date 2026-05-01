@@ -142,122 +142,127 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        color: AppColors.backgroundColor,
-        child: Column(
-          children: [
-            // Header
-            Container(
-              color: AppColors.primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left,
-                        color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Text(
-                    widget.exercise.name,
-                    style: AppTextStyles.calendarHeader,
-                  ),
-                  GestureDetector(
-                    onTap: _showRestTimeDialog,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
+      body: SafeArea(
+        child: Container(
+          color: AppColors.backgroundColor,
+          child: Column(
+            children: [
+              // Header
+              Container(
+                color: AppColors.primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Icon(
+                        Icons.chevron_left,
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.timer,
-                            color: AppColors.primaryColor,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$restTimeSeconds',
-                            style: const TextStyle(
-                              color: AppColors.primaryColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                        size: 28,
                       ),
                     ),
-                  ),
-                ],
+                    Text(
+                      widget.exercise.name,
+                      style: AppTextStyles.calendarHeader,
+                    ),
+                    GestureDetector(
+                      onTap: _showRestTimeDialog,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.timer,
+                              color: AppColors.primaryColor,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$restTimeSeconds',
+                              style: const TextStyle(
+                                color: AppColors.primaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // Set management
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: sets.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == sets.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: FloatingActionButton.extended(
-                          onPressed: _addSet,
-                          backgroundColor: AppColors.primaryColor,
-                          icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text(
-                            'セットを追加',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+              // Set management
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: sets.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == sets.length) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: FloatingActionButton.extended(
+                            onPressed: _addSet,
+                            backgroundColor: AppColors.primaryColor,
+                            icon: const Icon(Icons.add, color: Colors.white),
+                            label: const Text(
+                              'セットを追加',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }
+                      );
+                    }
 
-                  return _buildSetRow(index);
-                },
-              ),
-            ),
-            // Save button
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Save training menu
-                    Navigator.pop(context);
+                    return _buildSetRow(index);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              // Save button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Save training menu
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    '保存',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                    child: const Text(
+                      '保存',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -265,8 +270,8 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
 
   Widget _buildSetRow(int setIndex) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -291,7 +296,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryColor.withOpacity(0.1),
+                    color: AppColors.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(

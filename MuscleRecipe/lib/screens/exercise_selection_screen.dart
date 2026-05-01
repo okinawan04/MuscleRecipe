@@ -44,72 +44,79 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        color: AppColors.backgroundColor,
-        child: Column(
-          children: [
-            // Header
-            Container(
-              color: AppColors.primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left,
-                        color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Text(
-                    '種目を選択',
-                    style: AppTextStyles.calendarHeader,
-                  ),
-                  const SizedBox(width: 40),
-                ],
+      backgroundColor: AppColors.primaryColor,
+      body: SafeArea(
+        child: Container(
+          color: AppColors.backgroundColor,
+          child: Column(
+            children: [
+              // Header
+              Container(
+                color: AppColors.primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left,
+                          color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      '種目を選択',
+                      style: AppTextStyles.calendarHeader.copyWith(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 40),
+                  ],
+                ),
               ),
-            ),
-            // Add exercise button
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    _showAddExerciseDialog();
+              // Add exercise button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _showAddExerciseDialog();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text(
+                      '部位・種目を追加',
+                      style: TextStyle(
+                        color: AppColors.primaryColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Exercise cards by body part
+              Expanded(
+                child: ListView.builder(
+                  itemCount: BodyPart.values.length,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemBuilder: (context, index) {
+                    final bodyPart = BodyPart.values[index];
+                    return _buildBodyPartCard(bodyPart);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text(
-                    '部位・種目を追加',
-                    style: TextStyle(
-                      color: AppColors.primaryColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                 ),
               ),
-            ),
-            // Exercise cards by body part
-            Expanded(
-              child: ListView.builder(
-                itemCount: BodyPart.values.length,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                itemBuilder: (context, index) {
-                  final bodyPart = BodyPart.values[index];
-                  return _buildBodyPartCard(bodyPart);
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -121,7 +128,7 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
     final displayCount = isExpanded ? exercises.length : 5;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -131,7 +138,7 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
         children: [
           // Body part header
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -155,7 +162,7 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
           ),
           // Exercise list
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Column(
               children: List.generate(
                 displayCount.clamp(0, exercises.length),
@@ -168,7 +175,7 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
           ),
           // Show all / Add button row
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -221,7 +228,7 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
             ),
           ),
         ),
