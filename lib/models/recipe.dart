@@ -11,6 +11,7 @@ class Recipe {
   final String imageUrl;
   final int cookingTime;
   final String difficulty;
+  final String genre; // 肉的料理、鱼料理、油炸等
 
   Recipe({
     required this.id,
@@ -25,5 +26,6 @@ class Recipe {
     required this.imageUrl,
     required this.cookingTime,
     required this.difficulty,
+    required this.genre,
   });
 }
