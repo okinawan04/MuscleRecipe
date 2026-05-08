@@ -7,6 +7,7 @@ import 'widgets/custom_bottom_navigation_bar.dart';
 import 'widgets/tab_button.dart';
 import 'widgets/custom_elevated_button.dart';
 import 'screens/menu_list_screen.dart';
+import 'widgets/training_plan_modal.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -98,7 +99,9 @@ class _HomePageState extends State<HomePage> {
                   // Training Plan Button
                   CustomElevatedButton(
                     label: 'トレーニングプラン',
-                    onPressed: () {},
+                    onPressed: () {
+                      TrainingPlanModal.show(context);
+                    },
                   ),
                 ],
               ),
@@ -194,11 +197,11 @@ class _HomePageState extends State<HomePage> {
                     lineBarsData: [
                       LineChartBarData(
                         spots: const [
-                          FlSpot(0, 20),
+                          FlSpot(0, 30),
                           FlSpot(1, 40),
-                          FlSpot(2, 35),
+                          FlSpot(2, 60),
                           FlSpot(3, 50),
-                          FlSpot(4, 70),
+                          FlSpot(4, 80),
                           FlSpot(5, 90),
                           FlSpot(6, 100),
                         ],

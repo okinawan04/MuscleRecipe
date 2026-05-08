@@ -3,6 +3,7 @@ import '../models/training_models.dart';
 import '../providers/training_data_provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
+import 'menu_creation_screen.dart';
 
 class ExerciseSelectionScreen extends StatefulWidget {
   const ExerciseSelectionScreen({super.key});
@@ -220,15 +221,23 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
   Widget _buildExerciseItem(Exercise exercise) {
     return GestureDetector(
       onTap: () {
-        // Return selected exercise to previous screen
-        Navigator.pop(context, exercise);
+        // Navigate to MenuCreationScreen with the selected exercise
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MenuCreationScreen(
+              exercise: exercise,
+              date: DateTime.now(), // Pass the current date
+            ),
+          ),
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: Colors.grey.withValues(alpha: 0.2),
+              color: Colors.grey.withOpacity(0.2),
             ),
           ),
         ),

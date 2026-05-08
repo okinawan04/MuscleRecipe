@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/training_models.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
+import 'menu_list_screen.dart';
 
 class MenuCreationScreen extends StatefulWidget {
   final Exercise exercise;
@@ -155,7 +156,14 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: () {
+                        // Pass the updated data back to MenuListScreen
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const MenuListScreen(),
+                          ),
+                        );
+                      },
                       child: const Icon(
                         Icons.chevron_left,
                         color: Colors.white,

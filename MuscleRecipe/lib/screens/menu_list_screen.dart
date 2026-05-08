@@ -46,132 +46,159 @@ class _MenuListScreenState extends State<MenuListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryColor,
+      backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
-        child: Container(
-          color: AppColors.backgroundColor,
-          child: Column(
-            children: [
-              // Header with date
-              Container(
-                color: AppColors.primaryColor,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
+        child: Column(
+          children: [
+            // Header with date
+            Container(
+              color: AppColors.primaryColor,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const Icon(
+                          Icons.chevron_left,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('yyyy/MM/dd', 'ja_JP')
+                            .format(_selectedDate),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 28),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Statistics
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: SizedBox(
+                height: 60,
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: const Icon(
-                            Icons.chevron_left,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        Text(
-                          DateFormat('yyyy/MM/dd', 'ja_JP')
-                              .format(_selectedDate),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 28),
-                      ],
+                    Expanded(
+                      child: _buildStatCard(
+                        '合計種目数',
+                        _currentDayTraining.totalMenuCount.toString(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatCard(
+                        '合計セット数',
+                        _currentDayTraining.totalSetCount.toString(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatCard(
+                        '合計レップ数',
+                        _currentDayTraining.totalRepCount.toString(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatCard(
+                        '合計負荷量',
+                        _currentDayTraining.totalWeightLoad.toStringAsFixed(0),
+                      ),
                     ),
                   ],
                 ),
               ),
-              // Statistics
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: SizedBox(
-                  height: 60,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          '合計種目数',
-                          _currentDayTraining.totalMenuCount.toString(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildStatCard(
-                          '合計セット数',
-                          _currentDayTraining.totalSetCount.toString(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildStatCard(
-                          '合計レップ数',
-                          _currentDayTraining.totalRepCount.toString(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildStatCard(
-                          '合計負荷量',
-                          _currentDayTraining.totalWeightLoad.toStringAsFixed(0),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Menu list
-              Expanded(
-                child: _currentDayTraining.menus.isEmpty
-                    ? Center(
-                        child: Text(
-                          'メニューが登録されていません',
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _currentDayTraining.menus.length,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        itemBuilder: (context, index) {
-                          final menu = _currentDayTraining.menus[index];
-                          return _buildMenuCard(menu);
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-                onPressed: () async {
+            ),
+            // Menu list
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16), // 左右に余白を追加
+                itemCount: _currentDayTraining.menus.length,
+                itemBuilder: (context, index) {
+                  final menu = _currentDayTraining.menus[index];
                   
-                  final selectedExercise = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ExerciseSelectionScreen(),
+                  // ↓ 単なる ListTile ではなく、白い Container で囲う
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          menu.exercise.name,
+                          style: const TextStyle(
+                            color: AppColors.primaryColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // セットごとの情報を表示
+                        ...menu.sets.map((set) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Set ${set.setNumber}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              Text('${set.weight}kg × ${set.reps}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        )).toList(),
+                      ],
                     ),
                   );
-
-                  // 2. 種目が選択されて戻ってきた場合の処理
-                  if (selectedExercise != null && selectedExercise is Exercise) {
-                    // TODO: 選択された種目を使って、セット数などを入力する編集画面へ進む
-                    print('選択された種目: ${selectedExercise.name}');
-                  }
-
                 },
-                backgroundColor: AppColors.primaryColor,
-                shape: const CircleBorder(), // 丸い形状
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: 30,
-                  ),
               ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat, // 右下に指定
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primaryColor,
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ExerciseSelectionScreen(),
+            ),
+          );
+
+          if (result != null) {
+            setState(() {
+              final exercise = result['exercise'] as Exercise;
+              final sets = result['sets'] as List<TrainingSet>;
+              final restTime = result['restTime'] as int;
+
+              _currentDayTraining.menus.add(
+                TrainingMenu(
+                  id: DateTime.now().toString(),
+                  date: _selectedDate,
+                  exercise: exercise,
+                  sets: sets,
+                  restTime: restTime,
+                ),
+              );
+            });
+          }
+        },
+        child: const Icon(Icons.add, color: Colors.white), // アイコンを白に
+      ),
     );
   }
 
@@ -203,76 +230,6 @@ class _MenuListScreenState extends State<MenuListScreen> {
               color: AppColors.primaryColor,
               fontSize: 14,
               fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuCard(TrainingMenu menu) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () {
-              // Navigate to menu creation screen
-            },
-            child: Text(
-              menu.exercise.name,
-              style: const TextStyle(
-                color: AppColors.primaryColor,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Column(
-            children: List.generate(
-              menu.sets.length,
-              (index) {
-                final set = menu.sets[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Set ${set.setNumber}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        '${set.weight.toStringAsFixed(1)}kg × ${set.reps}',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (set.rm != null)
-                        Text(
-                          set.rm!.toStringAsFixed(1),
-                          style: const TextStyle(
-                            color: AppColors.accentColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
             ),
           ),
         ],
