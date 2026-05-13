@@ -1,192 +1,154 @@
-import 'package:uuid/uuid.dart';
 import '../models/training_models.dart';
 
 /// トレーニングデータを管理するプロバイダー
 class TrainingDataProvider {
-  static const _uuid = Uuid();
-
   /// 初期種目データを取得
   static List<Exercise> getInitialExercises() {
     return [
       // 胸
       Exercise(
-        id: _uuid.v4(),
         name: 'ベンチプレス',
         bodyPart: BodyPart.chest,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'インクラインチェストプレス',
         bodyPart: BodyPart.chest,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'インクラインプレス',
         bodyPart: BodyPart.chest,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'インクラインダンベルプレス',
         bodyPart: BodyPart.chest,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'チェストフライ',
         bodyPart: BodyPart.chest,
       ),
       // 背中
       Exercise(
-        id: _uuid.v4(),
         name: 'ラットプルダウン',
         bodyPart: BodyPart.back,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'デッドリフト',
         bodyPart: BodyPart.back,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'バーベルロウ',
         bodyPart: BodyPart.back,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'シーテッドロウ',
         bodyPart: BodyPart.back,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'ワンハンドロウ',
         bodyPart: BodyPart.back,
       ),
       // 肩
       Exercise(
-        id: _uuid.v4(),
         name: 'ショルダープレス',
         bodyPart: BodyPart.shoulder,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'サイドレイズ',
         bodyPart: BodyPart.shoulder,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'フロントレイズ',
         bodyPart: BodyPart.shoulder,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'リアデルトフライ',
         bodyPart: BodyPart.shoulder,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'スミスマシンショルダープレス',
         bodyPart: BodyPart.shoulder,
       ),
       // 脚
       Exercise(
-        id: _uuid.v4(),
         name: 'スクワット',
         bodyPart: BodyPart.leg,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'レッグプレス',
         bodyPart: BodyPart.leg,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'レッグカール',
         bodyPart: BodyPart.leg,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'レッグエクステンション',
         bodyPart: BodyPart.leg,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'レッグプレス（スミスマシン）',
         bodyPart: BodyPart.leg,
       ),
       // 腕
       Exercise(
-        id: _uuid.v4(),
         name: 'バーベルカール',
         bodyPart: BodyPart.arm,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'ダンベルカール',
         bodyPart: BodyPart.arm,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'トライセプスプレス',
         bodyPart: BodyPart.arm,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'トライセプスディップス',
         bodyPart: BodyPart.arm,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'オーバーヘッドエクステンション',
         bodyPart: BodyPart.arm,
       ),
       // お尻
       Exercise(
-        id: _uuid.v4(),
         name: 'ヒップスラスト',
         bodyPart: BodyPart.glute,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'ブルガリアンスクワット',
         bodyPart: BodyPart.glute,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'ルーマニアンデッドリフト',
         bodyPart: BodyPart.glute,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'レッグプレス（ハイバー）',
         bodyPart: BodyPart.glute,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'ケーブルキックバック',
         bodyPart: BodyPart.glute,
       ),
       // 腹筋
       Exercise(
-        id: _uuid.v4(),
         name: 'ケーブルクランチ',
         bodyPart: BodyPart.abs,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'クランチ',
         bodyPart: BodyPart.abs,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'ハンギングレッグレイズ',
         bodyPart: BodyPart.abs,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'ディクラインシットアップ',
         bodyPart: BodyPart.abs,
       ),
       Exercise(
-        id: _uuid.v4(),
         name: 'アブドミナルクランチマシン',
         bodyPart: BodyPart.abs,
       ),
@@ -204,7 +166,7 @@ class TrainingDataProvider {
         date: DateTime(2026, 5, 26),
         menus: [
           TrainingMenu(
-            id: _uuid.v4(),
+            id: '1',
             exercise: exercises
                 .firstWhere((e) => e.name == 'ベンチプレス'),
             date: DateTime(2026, 5, 26),
@@ -217,7 +179,7 @@ class TrainingDataProvider {
             restTime: 60,
           ),
           TrainingMenu(
-            id: _uuid.v4(),
+            id: '2',
             exercise: exercises
                 .firstWhere((e) => e.name == 'インクラインチェストプレス'),
             date: DateTime(2026, 5, 26),
@@ -234,7 +196,7 @@ class TrainingDataProvider {
         date: today,
         menus: [
           TrainingMenu(
-            id: _uuid.v4(),
+            id: '3',
             exercise: exercises
                 .firstWhere((e) => e.name == 'スクワット'),
             date: today,
@@ -247,7 +209,7 @@ class TrainingDataProvider {
             restTime: 90,
           ),
           TrainingMenu(
-            id: _uuid.v4(),
+            id: '4',
             exercise: exercises
                 .firstWhere((e) => e.name == 'レッグプレス'),
             date: today,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/training_models.dart';
-import '../providers/training_data_provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import 'menu_creation_screen.dart';
+import '../database_helper.dart';
 
 class ExerciseSelectionScreen extends StatefulWidget {
   const ExerciseSelectionScreen({super.key});
@@ -14,21 +14,30 @@ class ExerciseSelectionScreen extends StatefulWidget {
 }
 
 class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
-  late List<Exercise> allExercises;
-  late Map<BodyPart, List<Exercise>> exercisesByBodyPart;
+  List<Exercise> allExercises = [];
+  Map<BodyPart, List<Exercise>> exercisesByBodyPart = {};
   final Map<BodyPart, bool> _expandedState = {};
 
   @override
   void initState() {
     super.initState();
-    allExercises = TrainingDataProvider.getInitialExercises();
-    _groupExercises();
-    
+    _loadExercises(); // Load exercises from the database
+
     // Initialize expanded state
     for (final bodyPart in BodyPart.values) {
       _expandedState[bodyPart] = false;
     }
   }
+
+  // DBから種目を取得して画面を更新するメソッド
+Future<void> _loadExercises() async {
+  final dbExercises = await DatabaseHelper.instance.getExercises();
+  
+  setState(() {
+    allExercises = dbExercises.map((map) => Exercise.fromMap(map)).toList();
+    _groupExercises(); // 部位ごとに振り分け
+  });
+}
 
   void _groupExercises() {
     exercisesByBodyPart = {};
@@ -237,7 +246,7 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey,
             ),
           ),
         ),
@@ -305,19 +314,15 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
               child: const Text('キャンセル'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (newExerciseName.isNotEmpty && selectedBodyPart != null) {
-                  setState(() {
-                    final newExercise = Exercise(
-                      id: DateTime.now().toString(),
-                      name: newExerciseName,
-                      bodyPart: selectedBodyPart!,
-                    );
-                    allExercises.add(newExercise);
-                    _groupExercises();
-                  });
-                  Navigator.pop(context);
-                  this.setState(() {});
+                  // 1. データベース保存を先に完了させる
+                  await DatabaseHelper.instance.insertExercise(
+                    category: selectedBodyPart!.displayName,
+                    name: newExerciseName,
+                  );
+                await _loadExercises(); // DBから再読み込み
+                 Navigator.pop(context);
                 }
               },
               child: const Text('追加'),
@@ -360,13 +365,17 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
               if (newExerciseName.isNotEmpty) {
                 setState(() {
                   final newExercise = Exercise(
-                    id: DateTime.now().toString(),
                     name: newExerciseName,
                     bodyPart: bodyPart,
                   );
                   allExercises.add(newExercise);
                   _groupExercises();
                 });
+                // データベースに保存
+                DatabaseHelper.instance.insertExercise(
+                  category: bodyPart.displayName,
+                  name: newExerciseName,
+                );
                 Navigator.pop(context);
               }
             },

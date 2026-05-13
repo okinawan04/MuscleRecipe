@@ -90,7 +90,7 @@ class _HomePageState extends State<HomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const MenuListScreen(),
+                          builder: (context) => MenuListScreen(selectedDate: _selectedDate),
                         ),
                       );
                     },
@@ -336,9 +336,13 @@ class _HomePageState extends State<HomePage> {
 
         return GestureDetector(
           onTap: () {
-            setState(() {
-              _selectedDate = DateTime(year, month, day);
-            });
+            final selectedDate = DateTime(year, month, day);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MenuListScreen(selectedDate: selectedDate),
+              ),
+            );
           },
           child: Container(
             decoration: BoxDecoration(

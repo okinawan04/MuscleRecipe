@@ -3,43 +3,46 @@ import 'package:intl/intl.dart';
 import '../models/training_models.dart';
 import '../providers/training_data_provider.dart';
 import '../constants/app_colors.dart';
-import '../constants/app_text_styles.dart';
+import '../database_helper.dart';
 import 'exercise_selection_screen.dart';
+import '../home.dart';
 
 class MenuListScreen extends StatefulWidget {
-  const MenuListScreen({super.key});
+  final DateTime? selectedDate;
+
+  const MenuListScreen({super.key, this.selectedDate});
 
   @override
   State<MenuListScreen> createState() => _MenuListScreenState();
 }
 
 class _MenuListScreenState extends State<MenuListScreen> {
-  late List<DailyTraining> allTrainingData;
   late DateTime _selectedDate;
-  late DailyTraining _currentDayTraining;
+  List<Map<String, dynamic>> _trainingRecords = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
-    allTrainingData = TrainingDataProvider.getSampleTrainingData();
-    _updateCurrentDayTraining();
+    _selectedDate = widget.selectedDate ?? DateTime.now();
+    _loadTrainingRecords();
   }
 
-  void _updateCurrentDayTraining() {
-    // 選択された日付のデータを取得、なければ空のDailyTrainingを作成
+  Future<void> _loadTrainingRecords() async {
     try {
-      _currentDayTraining = allTrainingData.firstWhere(
-        (training) =>
-            training.date.year == _selectedDate.year &&
-            training.date.month == _selectedDate.month &&
-            training.date.day == _selectedDate.day,
-      );
+      final db = DatabaseHelper.instance;
+      final records = await db.getTrainingRecordsByDate(_selectedDate);
+      setState(() {
+        _trainingRecords = List<Map<String, dynamic>>.from(records);
+        _isLoading = false;
+      });
     } catch (e) {
-      _currentDayTraining = DailyTraining(
-        date: _selectedDate,
-        menus: [],
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('データ読み込みエラー: $e')),
       );
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -60,7 +63,14 @@ class _MenuListScreenState extends State<MenuListScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
+                        onTap: () {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (context) => const HomePage(),
+                            ),
+                            (route) => false,
+                          );
+                        } ,
                         child: const Icon(
                           Icons.chevron_left,
                           color: Colors.white,
@@ -92,28 +102,28 @@ class _MenuListScreenState extends State<MenuListScreen> {
                     Expanded(
                       child: _buildStatCard(
                         '合計種目数',
-                        _currentDayTraining.totalMenuCount.toString(),
+                        _getUniqueExerciseCount().toString(),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildStatCard(
                         '合計セット数',
-                        _currentDayTraining.totalSetCount.toString(),
+                        _trainingRecords.length.toString(),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildStatCard(
                         '合計レップ数',
-                        _currentDayTraining.totalRepCount.toString(),
+                        _getTotalReps().toString(),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildStatCard(
                         '合計負荷量',
-                        _currentDayTraining.totalWeightLoad.toStringAsFixed(0),
+                        _getTotalWeight().toStringAsFixed(0),
                       ),
                     ),
                   ],
@@ -122,53 +132,112 @@ class _MenuListScreenState extends State<MenuListScreen> {
             ),
             // Menu list
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16), // 左右に余白を追加
-                itemCount: _currentDayTraining.menus.length,
-                itemBuilder: (context, index) {
-                  final menu = _currentDayTraining.menus[index];
-                  
-                  // ↓ 単なる ListTile ではなく、白い Container で囲う
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          menu.exercise.name,
-                          style: const TextStyle(
-                            color: AppColors.primaryColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _trainingRecords.isEmpty
+                      ? const Center(
+                          child: Text('今日のトレーニングはまだありません'),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _getGroupedExercises().length,
+                          itemBuilder: (context, index) {
+                            final exercises = _getGroupedExercises();
+                            final exerciseName = exercises.keys.toList()[index];
+                            final sets = exercises[exerciseName] ?? [];
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        exerciseName,
+                                        style: const TextStyle(
+                                          color: AppColors.primaryColor,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ...sets.map((set) => Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'Set ${set['set_number']}',
+                                                  style: const TextStyle(
+                                                    color: Colors.grey,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '${set['weight']}kg × ${set['reps']}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (set['memo'] != null &&
+                                                set['memo'].toString().isNotEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 4),
+                                                child: Text(
+                                                  'メモ: ${set['memo']}',
+                                                  style: const TextStyle(
+                                                    color: Colors.grey,
+                                                    fontSize: 11,
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      )).toList(),
+                                    ],
+                                  ),
+                                  // Delete button at top right
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () => _deleteExerciseSet(
+                                        sets.first['id'] as int,
+                                        exerciseName,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.red[400],
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                        const SizedBox(height: 8),
-                        // セットごとの情報を表示
-                        ...menu.sets.map((set) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Set ${set.setNumber}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                              Text('${set.weight}kg × ${set.reps}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        )).toList(),
-                      ],
-                    ),
-                  );
-                },
-              ),
             ),
           ],
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat, // 右下に指定
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primaryColor,
         onPressed: () async {
@@ -179,27 +248,95 @@ class _MenuListScreenState extends State<MenuListScreen> {
             ),
           );
 
-          if (result != null) {
-            setState(() {
-              final exercise = result['exercise'] as Exercise;
-              final sets = result['sets'] as List<TrainingSet>;
-              final restTime = result['restTime'] as int;
-
-              _currentDayTraining.menus.add(
-                TrainingMenu(
-                  id: DateTime.now().toString(),
-                  date: _selectedDate,
-                  exercise: exercise,
-                  sets: sets,
-                  restTime: restTime,
-                ),
-              );
-            });
+          if (result != null && mounted) {
+            // リロード
+            _loadTrainingRecords();
           }
         },
-        child: const Icon(Icons.add, color: Colors.white), // アイコンを白に
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
+  }
+
+  int _getUniqueExerciseCount() {
+    final uniqueNames = <String>{};
+    for (final record in _trainingRecords) {
+      uniqueNames.add(record['name'] as String);
+    }
+    return uniqueNames.length;
+  }
+
+  int _getTotalReps() {
+    return _trainingRecords.fold(
+      0,
+      (sum, record) => sum + (record['reps'] as int),
+    );
+  }
+
+  double _getTotalWeight() {
+    return _trainingRecords.fold(
+      0.0,
+      (sum, record) => sum + ((record['weight'] as num).toDouble()),
+    );
+  }
+
+  Map<String, List<Map<String, dynamic>>> _getGroupedExercises() {
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final record in _trainingRecords) {
+      final name = record['name'] as String;
+      if (!grouped.containsKey(name)) {
+        grouped[name] = [];
+      }
+      grouped[name]!.add(record);
+    }
+    return grouped;
+  }
+
+  Future<void> _deleteExerciseSet(int recordId, String exerciseName) async {
+    try {
+      final db = DatabaseHelper.instance;
+      
+      // Show confirmation dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('削除確認'),
+          content: Text('$exerciseName を削除してもよろしいですか？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル'),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Delete from database
+                await db.deleteTrainingRecord(recordId);
+                
+                // Remove from UI
+                setState(() {
+                  _trainingRecords.removeWhere((record) => record['id'] == recordId);
+                });
+                
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('削除しました')),
+                  );
+                }
+              },
+              child: const Text(
+                '削除',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('削除に失敗しました: $e')),
+      );
+    }
   }
 
   Widget _buildStatCard(String label, String value) {

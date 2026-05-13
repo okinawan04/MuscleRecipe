@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/training_models.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
+import '../database_helper.dart';
 import 'menu_list_screen.dart';
 
 class MenuCreationScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
       TextEditingController(text: '60');
   final List<TextEditingController> _weightControllers = [];
   final List<TextEditingController> _repControllers = [];
+  final List<TextEditingController> _memoControllers = [];
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
   void _initializeControllers() {
     _weightControllers.clear();
     _repControllers.clear();
+    _memoControllers.clear();
     for (final set in sets) {
       _weightControllers.add(
         TextEditingController(text: set.weight > 0 ? set.weight.toString() : ''),
@@ -51,6 +54,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
       _repControllers.add(
         TextEditingController(text: set.reps > 0 ? set.reps.toString() : ''),
       );
+      _memoControllers.add(TextEditingController());
     }
   }
 
@@ -61,6 +65,9 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
       controller.dispose();
     }
     for (final controller in _repControllers) {
+      controller.dispose();
+    }
+    for (final controller in _memoControllers) {
       controller.dispose();
     }
     super.dispose();
@@ -78,6 +85,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
       );
       _weightControllers.add(TextEditingController());
       _repControllers.add(TextEditingController());
+      _memoControllers.add(TextEditingController());
     });
   }
 
@@ -91,6 +99,24 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
       setState(() {
         sets[setIndex] = sets[setIndex].copyWith(weight: previousWeight);
       });
+    }
+  }
+
+  void _copyPreviousReps(int setIndex) {
+    if (setIndex > 0) {
+      final previousReps = _repControllers[setIndex - 1].text;
+      _repControllers[setIndex].text = previousReps;
+      setState(() {
+        final reps = int.tryParse(previousReps) ?? 0;
+        sets[setIndex] = sets[setIndex].copyWith(reps: reps);
+      });
+    }
+  }
+
+  void _copyPreviousMemo(int setIndex) {
+    if (setIndex > 0) {
+      final previousMemo = _memoControllers[setIndex - 1].text;
+      _memoControllers[setIndex].text = previousMemo;
     }
   }
 
@@ -248,9 +274,12 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                   width: double.infinity,
                   height: 44,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Save training menu
-                      Navigator.pop(context);
+                    onPressed: () async {
+                      // Save training menu to database
+                      await _saveTrainingRecords();
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryColor,
@@ -298,7 +327,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              // Copy button
+              // Copy button for weight
               GestureDetector(
                 onTap: () => _copyPreviousWeight(setIndex),
                 child: Container(
@@ -343,6 +372,23 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               const SizedBox(width: 8),
               const Text('kg', style: TextStyle(fontSize: 12)),
               const SizedBox(width: 12),
+              // Copy button for reps
+              GestureDetector(
+                onTap: () => _copyPreviousReps(setIndex),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.copy,
+                    color: AppColors.primaryColor,
+                    size: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               // Reps input
               Expanded(
                 flex: 1,
@@ -369,8 +415,92 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               const Text('回', style: TextStyle(fontSize: 12)),
             ],
           ),
+          const SizedBox(height: 12),
+          // Memo section with copy button
+          Row(
+            children: [
+              // Copy button for memo
+              GestureDetector(
+                onTap: () => _copyPreviousMemo(setIndex),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.copy,
+                    color: AppColors.primaryColor,
+                    size: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Memo input
+              Expanded(
+                child: TextField(
+                  controller: _memoControllers[setIndex],
+                  keyboardType: TextInputType.text,
+                  maxLines: 2,
+                  minLines: 1,
+                  decoration: InputDecoration(
+                    hintText: 'メモ（オプション）',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _saveTrainingRecords() async {
+    try {
+      final db = DatabaseHelper.instance;
+      final now = DateTime.now().toIso8601String();
+
+      // Get or create the exercise in training_menus table
+      final exerciseMap = {
+        'category': widget.exercise.bodyPart.displayName,
+        'name': widget.exercise.name,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      };
+
+      final menuId = await db.insertExercise(
+        category: widget.exercise.bodyPart.displayName,
+        name: widget.exercise.name,
+      );
+
+      // Save each set as a training record
+      for (int i = 0; i < sets.length; i++) {
+        final weight = double.tryParse(_weightControllers[i].text) ?? 0.0;
+        final reps = int.tryParse(_repControllers[i].text) ?? 0;
+        final memo = _memoControllers[i].text.isEmpty ? null : _memoControllers[i].text;
+
+        await db.insertTrainingRecord(
+          menuId: menuId,
+          trainingDate: widget.date.toIso8601String(),
+          setNumber: sets[i].setNumber,
+          weight: weight,
+          reps: reps,
+          restSeconds: restTimeSeconds,
+          memo: memo,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存に失敗しました: $e')),
+      );
+    }
   }
 }
