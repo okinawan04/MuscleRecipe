@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/training_screen.dart';
 import 'screens/recipe_screen.dart';
@@ -9,8 +10,21 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  void _handleThemeModeChanged(ThemeMode mode) {
+    setState(() {
+      _themeMode = mode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,13 +34,73 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const MainApp(),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: _themeMode,
+      home: AuthWrapper(
+        themeMode: _themeMode,
+        onThemeModeChanged: _handleThemeModeChanged,
+      ),
+    );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+
+  const AuthWrapper(
+      {super.key, required this.themeMode, required this.onThemeModeChanged});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoggedIn = false;
+
+  void _handleLoginSuccess() {
+    setState(() {
+      _isLoggedIn = true;
+    });
+  }
+
+  void _handleLogout() {
+    setState(() {
+      _isLoggedIn = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isLoggedIn) {
+      return LoginScreen(onLoginSuccess: _handleLoginSuccess);
+    }
+    return MainApp(
+      onLogout: _handleLogout,
+      currentThemeMode: widget.themeMode,
+      onThemeModeChanged: widget.onThemeModeChanged,
     );
   }
 }
 
 class MainApp extends StatefulWidget {
-  const MainApp({super.key});
+  final VoidCallback onLogout;
+  final ThemeMode currentThemeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+
+  const MainApp({
+    super.key,
+    required this.onLogout,
+    required this.currentThemeMode,
+    required this.onThemeModeChanged,
+  });
 
   @override
   State<MainApp> createState() => _MainAppState();
@@ -34,14 +108,6 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   int _selectedIndex = 0;
-
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const TrainingScreen(),
-    const RecipeScreen(),
-    const InventoryScreen(),
-    const AccountScreen(),
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -51,12 +117,24 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      const HomeScreen(),
+      const TrainingScreen(),
+      const RecipeScreen(),
+      const InventoryScreen(),
+      AccountScreen(
+        onLogout: widget.onLogout,
+        currentThemeMode: widget.currentThemeMode,
+        onThemeModeChanged: widget.onThemeModeChanged,
+      ),
+    ];
+
     // スマホ対応：最大幅を設定
     return Scaffold(
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: _screens[_selectedIndex],
+          child: screens[_selectedIndex],
         ),
       ),
       bottomNavigationBar: Container(

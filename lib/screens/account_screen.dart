@@ -3,7 +3,16 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 class AccountScreen extends StatefulWidget {
-  const AccountScreen({super.key});
+  final VoidCallback? onLogout;
+  final ThemeMode currentThemeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+
+  const AccountScreen({
+    super.key,
+    this.onLogout,
+    required this.currentThemeMode,
+    this.onThemeModeChanged,
+  });
 
   @override
   State<AccountScreen> createState() => _AccountScreenState();
@@ -55,6 +64,14 @@ class _AccountScreenState extends State<AccountScreen> {
 
               // トレーニング志向セクション
               _buildTrainingGoal(),
+              const SizedBox(height: 24),
+
+              // テーマ設定セクション
+              _buildThemeSetting(),
+              const SizedBox(height: 24),
+
+              // 法的情報・問い合わせセクション
+              _buildLegalSupportSection(),
               const SizedBox(height: 24),
 
               // 購入ログセクション
@@ -588,6 +605,164 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
+  Widget _buildThemeSetting() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'テーマ設定',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Icon(
+                  Icons.brightness_6,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            RadioListTile<ThemeMode>(
+              value: ThemeMode.light,
+              groupValue: widget.currentThemeMode,
+              title: const Text('ライトモード'),
+              onChanged: widget.onThemeModeChanged == null
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        widget.onThemeModeChanged!(value);
+                      }
+                    },
+              activeColor: Theme.of(context).colorScheme.primary,
+              contentPadding: EdgeInsets.zero,
+            ),
+            RadioListTile<ThemeMode>(
+              value: ThemeMode.dark,
+              groupValue: widget.currentThemeMode,
+              title: const Text('ダークモード'),
+              onChanged: widget.onThemeModeChanged == null
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        widget.onThemeModeChanged!(value);
+                      }
+                    },
+              activeColor: Theme.of(context).colorScheme.primary,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegalSupportSection() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            title: const Text('利用規約'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showTermsDialog,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('プライバシーポリシー'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showPrivacyDialog,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('お問い合わせ'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showContactDialog,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('利用規約'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'MuscleRecipeの利用にあたっては、利用規約に同意していただく必要があります。\n\n'
+              '本アプリは参考情報を提供するものであり、医療行為や専門的なアドバイスを置き換えるものではありません。\n\n'
+              'ご利用者は自己責任のもと本アプリを使用してください。',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPrivacyDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('プライバシーポリシー'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'お客様のプライバシーは大切です。本アプリでは、個人情報を外部に提供せず、'
+              '端末内に保存されたデータを適切に扱います。\n\n'
+              '詳細な収集・利用方法については今後のバージョンで公開します。',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showContactDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('お問い合わせ'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'ご質問やご意見は次のメールアドレスまでお寄せください。\n\n'
+              'support@musclerecipe.example.com\n\n'
+              '今後、アプリ内お問い合わせフォームを実装予定です。',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _logout() {
     showDialog(
       context: context,
@@ -602,8 +777,9 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                // TODO: 実際のログアウト処理を実装
+                // ログアウト処理
                 Navigator.of(context).pop();
+                widget.onLogout?.call();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('ログアウトしました')),
                 );
