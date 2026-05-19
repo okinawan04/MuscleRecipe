@@ -216,7 +216,9 @@ class _MenuListScreenState extends State<MenuListScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : _trainingRecords.isEmpty
                       ? const Center(
-                          child: Text('今日のトレーニングはまだありません'),
+                          child: Text('今日のトレーニングはまだありません'
+                              , style: TextStyle(color: Colors.white70),
+                              ),
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),

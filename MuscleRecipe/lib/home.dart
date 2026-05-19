@@ -22,7 +22,7 @@ class _HomePageState extends State<HomePage> {
   bool _showCalendar = true;
   DateTime _selectedDate = DateTime.now();
   late DateTime _displayedMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
-  BodyPart? _selectedBodyPart; // グラフで選択された部位
+  BodyPart? _selectedBodyPart = BodyPart.values.first; // グラフで選択された部位
 
   @override
   Widget build(BuildContext context) {

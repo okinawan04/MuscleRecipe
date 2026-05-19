@@ -294,7 +294,11 @@ Future<void> _loadExercises() async {
               // Body part dropdown
               DropdownButton<BodyPart>(
                 value: selectedBodyPart,
-                hint: const Text('部位を選択'),
+                hint: const Text(
+                  '部位を選択',
+                  style: TextStyle(color: Colors.white70)
+                ),
+                iconEnabledColor: Colors.white,
                 items: BodyPart.values
                     .map((bp) => DropdownMenuItem(
                           value: bp,
@@ -310,12 +314,15 @@ Future<void> _loadExercises() async {
               const SizedBox(height: 16),
               // Exercise name input
               TextField(
+                style: const TextStyle(color: Colors.white), // ★入力された文字を白に
                 onChanged: (value) {
                   newExerciseName = value;
                 },
                 decoration: InputDecoration(
                   hintText: '種目名を入力',
+                  hintStyle: const TextStyle(color: Colors.white70), // ★ヒント文字を白に
                   border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white70), // ★枠線を白に
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
@@ -325,7 +332,10 @@ Future<void> _loadExercises() async {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('キャンセル'),
+              child: const Text(
+                'キャンセル',
+                style: TextStyle(color: Colors.white70),
+                ),
             ),
             TextButton(
               onPressed: () async {
@@ -352,7 +362,10 @@ Future<void> _loadExercises() async {
                   );
                 }
               },
-              child: const Text('追加'),
+              child: const Text(
+                '追加',
+                style: TextStyle(color: Colors.white70),
+              ),
             ),
           ],
         ),
@@ -372,11 +385,13 @@ Future<void> _loadExercises() async {
           style: AppTextStyles.pageTitle,
         ),
         content: TextField(
+          style: const TextStyle(color: Colors.white), // ★入力された文字を白に
           onChanged: (value) {
             newExerciseName = value;
           },
           decoration: InputDecoration(
             hintText: '種目名を入力',
+              hintStyle: const TextStyle(color: Colors.white70), // ★ヒント文字を白に
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -385,7 +400,10 @@ Future<void> _loadExercises() async {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('キャンセル'),
+            child: const Text(
+              'キャンセル',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -415,7 +433,10 @@ Future<void> _loadExercises() async {
                 );
               }
             },
-            child: const Text('追加'),
+            child: const Text(
+              '追加',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),

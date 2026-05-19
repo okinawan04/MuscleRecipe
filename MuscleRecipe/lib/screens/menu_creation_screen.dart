@@ -4,6 +4,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../database_helper.dart';
 import 'menu_list_screen.dart';
+import 'dart:async'; // ★タイマーを使うために必要です
 
 class MenuCreationScreen extends StatefulWidget {
   final Exercise exercise;
@@ -22,6 +23,8 @@ class MenuCreationScreen extends StatefulWidget {
 class _MenuCreationScreenState extends State<MenuCreationScreen> {
   late List<TrainingSet> sets;
   int restTimeSeconds = 60;
+  Timer? _timer;               // タイマーの状況を管理する変数
+  int _currentRemaining = 0;   // カウントダウン中の残り秒数
   final TextEditingController _restTimeController =
       TextEditingController(text: '60');
   final List<TextEditingController> _weightControllers = [];
@@ -160,6 +163,63 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               Navigator.pop(context);
             },
             child: const Text('設定'),
+          ),
+          // ★ 新しく追加した「スタート」ボタン
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryColor, // アプリのメインカラー（オレンジ系など）
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: () {
+            // 1. まず入力された秒数でレストタイムを更新・確定させる
+            _updateRestTime(controller.text);
+            
+            // 2. ダイアログを閉じる
+            Navigator.pop(context);
+            
+            // 3. タイマーカウントダウンを開始するメソッドを呼び出す
+            // ※既存のプロジェクトにタイマー開始メソッド（例: _startTimer() など）があればそれを指定してください
+            _startTimer(); 
+          },
+          child: const Text(
+            'スタート',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+        ],
+      ),
+    );
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _currentRemaining = restTimeSeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_currentRemaining > 0) {
+        setState(() {
+          _currentRemaining--;
+        });
+        print('残り時間: $_currentRemaining秒');
+      } else {
+        timer.cancel();
+        _showTimerFinishedDialog();
+      }
+    });
+  }
+
+  void _showTimerFinishedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('終了', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.backgroundColor,
+        content: const Text('レストタイムが終了しました！', style: TextStyle(color: Colors.white)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
           ),
         ],
       ),

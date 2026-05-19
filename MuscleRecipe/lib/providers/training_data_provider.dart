@@ -15,7 +15,7 @@ class TrainingDataProvider {
         bodyPart: BodyPart.chest,
       ),
       Exercise(
-        name: 'インクラインプレス',
+        name: 'ケーブルフライ',
         bodyPart: BodyPart.chest,
       ),
       Exercise(
@@ -57,7 +57,7 @@ class TrainingDataProvider {
         bodyPart: BodyPart.shoulder,
       ),
       Exercise(
-        name: 'フロントレイズ',
+        name: 'フェイスプル',
         bodyPart: BodyPart.shoulder,
       ),
       Exercise(
