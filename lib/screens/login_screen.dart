@@ -131,11 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'テスト用管理者アカウント: メール 402setup / パスワード 402@setup',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
               const SizedBox(height: 24),
 
               // ログインボタン

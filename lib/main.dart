@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/training_screen.dart';
@@ -63,22 +64,55 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  static const String _loginStatusKey = 'isLoggedIn';
   bool _isLoggedIn = false;
+  bool _isInitialized = false;
 
-  void _handleLoginSuccess() {
-    setState(() {
-      _isLoggedIn = true;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadLoginStatus();
   }
 
-  void _handleLogout() {
-    setState(() {
-      _isLoggedIn = false;
-    });
+  Future<void> _loadLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedStatus = prefs.getBool(_loginStatusKey) ?? false;
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = savedStatus;
+        _isInitialized = true;
+      });
+    }
+  }
+
+  Future<void> _handleLoginSuccess() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_loginStatusKey, true);
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = true;
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_loginStatusKey, false);
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (!_isLoggedIn) {
       return LoginScreen(onLoginSuccess: _handleLoginSuccess);
     }

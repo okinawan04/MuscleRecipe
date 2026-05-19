@@ -48,6 +48,12 @@ class _AccountScreenState extends State<AccountScreen> {
       appBar: AppBar(
         title: const Text('アカウント'),
         centerTitle: true,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFFC48600)
+            : const Color(0xFFFFB300),
+        foregroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -58,24 +64,12 @@ class _AccountScreenState extends State<AccountScreen> {
               _buildAccountInfo(),
               const SizedBox(height: 24),
 
-              // 身体情報セクション
-              _buildPhysicalInfo(),
+              // その他の項目を一覧表示するまとめセクション
+              _buildGroupedAccountSection(),
               const SizedBox(height: 24),
 
-              // トレーニング志向セクション
-              _buildTrainingGoal(),
-              const SizedBox(height: 24),
-
-              // テーマ設定セクション
-              _buildThemeSetting(),
-              const SizedBox(height: 24),
-
-              // 法的情報・問い合わせセクション
+              // 利用規約・プライバシーポリシー・お問い合わせ
               _buildLegalSupportSection(),
-              const SizedBox(height: 24),
-
-              // 購入ログセクション
-              _buildPurchaseLog(),
               const SizedBox(height: 24),
 
               // ログアウトセクション
@@ -139,6 +133,141 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGroupedAccountSection() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            title: const Text('身体情報'),
+            subtitle: Text(
+              '身長: ${_height.isEmpty ? '未設定' : '$_height cm'}\n'
+              '体重: ${_weight.isEmpty ? '未設定' : '$_weight kg'}\n'
+              '性別: $_gender',
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showPhysicalInfoDialog,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('トレーニング志向'),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: SegmentedButton<String>(
+                segments: _trainingGoals
+                    .map((goal) => ButtonSegment(value: goal, label: Text(goal)))
+                    .toList(),
+                selected: <String>{_trainingGoal},
+                showSelectedIcon: false,
+                onSelectionChanged: (newSelection) {
+                  if (newSelection.isNotEmpty) {
+                    setState(() {
+                      _trainingGoal = newSelection.first;
+                    });
+                  }
+                },
+              ),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('テーマ設定'),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: SegmentedButton<ThemeMode>(
+                segments: const <ButtonSegment<ThemeMode>>[
+                  ButtonSegment(value: ThemeMode.light, label: Text('ライト')),
+                  ButtonSegment(value: ThemeMode.dark, label: Text('ダーク')),
+                ],
+                selected: <ThemeMode>{widget.currentThemeMode},
+                showSelectedIcon: false,
+                onSelectionChanged: (newSelection) {
+                  if (newSelection.isNotEmpty) {
+                    widget.onThemeModeChanged?.call(newSelection.first);
+                  }
+                },
+              ),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('購入ログ'),
+            subtitle: Text('${_purchaseLogs.length}件の購入記録'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showPurchaseLogDialog,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showThemeSettingDialog() {
+    ThemeMode tempMode = widget.currentThemeMode;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return AlertDialog(
+              title: const Text('テーマ設定'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<ThemeMode>(
+                    value: ThemeMode.light,
+                    groupValue: tempMode,
+                    title: const Text('ライトモード'),
+                    onChanged: (value) {
+                      if (value != null) {
+                        dialogSetState(() {
+                          tempMode = value;
+                        });
+                      }
+                    },
+                  ),
+                  RadioListTile<ThemeMode>(
+                    value: ThemeMode.dark,
+                    groupValue: tempMode,
+                    title: const Text('ダークモード'),
+                    onChanged: (value) {
+                      if (value != null) {
+                        dialogSetState(() {
+                          tempMode = value;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('キャンセル'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    widget.onThemeModeChanged?.call(tempMode);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
