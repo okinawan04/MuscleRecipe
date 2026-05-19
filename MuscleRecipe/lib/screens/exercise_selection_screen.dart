@@ -42,11 +42,22 @@ Future<void> _loadExercises() async {
   void _groupExercises() {
     exercisesByBodyPart = {};
     for (final bodyPart in BodyPart.values) {
-      final exercises = allExercises
+      var exercises = allExercises
           .where((e) => e.bodyPart == bodyPart)
           .toList();
       // Sort by creation date (newest first)
       exercises.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      
+      // 重複排除：同じ名前の種目は最初の1つだけを保持
+      final seenNames = <String>{};
+      exercises = exercises.where((e) {
+        if (seenNames.contains(e.name)) {
+          return false;
+        }
+        seenNames.add(e.name);
+        return true;
+      }).toList();
+      
       exercisesByBodyPart[bodyPart] = exercises;
     }
   }
@@ -231,7 +242,7 @@ Future<void> _loadExercises() async {
     return GestureDetector(
       onTap: () {
         // Navigate to MenuCreationScreen with the selected exercise
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => MenuCreationScreen(
@@ -250,11 +261,14 @@ Future<void> _loadExercises() async {
             ),
           ),
         ),
+        child: Center(
         child: Text(
-          exercise.name,
-          style: const TextStyle(
-            color: Colors.black87,
-            fontSize: 12,
+            exercise.name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 12,
+            ),
           ),
         ),
       ),
@@ -316,13 +330,26 @@ Future<void> _loadExercises() async {
             TextButton(
               onPressed: () async {
                 if (newExerciseName.isNotEmpty && selectedBodyPart != null) {
-                  // 1. データベース保存を先に完了させる
-                  await DatabaseHelper.instance.insertExercise(
-                    category: selectedBodyPart!.displayName,
-                    name: newExerciseName,
+                  try {
+                    final trimmedName = newExerciseName.trim();
+                    // DBに保存（既存の場合は既存IDを返す）
+                    await DatabaseHelper.instance.insertExercise(
+                      category: selectedBodyPart!.displayName,
+                      name: trimmedName,
+                    );
+                    await _loadExercises();
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('保存失敗: $e')),
+                    );
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('部位と種目名を入力してください')),
                   );
-                await _loadExercises(); // DBから再読み込み
-                 Navigator.pop(context);
                 }
               },
               child: const Text('追加'),
@@ -361,22 +388,31 @@ Future<void> _loadExercises() async {
             child: const Text('キャンセル'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               if (newExerciseName.isNotEmpty) {
-                setState(() {
-                  final newExercise = Exercise(
-                    name: newExerciseName,
-                    bodyPart: bodyPart,
+                try {
+                  // 入力された名前の前後から空白を除去
+                  final trimmedName = newExerciseName.trim();
+
+                  // DBに保存（既存の場合は既存IDを返す）
+                  await DatabaseHelper.instance.insertExercise(
+                    category: bodyPart.displayName,
+                    name: trimmedName,
                   );
-                  allExercises.add(newExercise);
-                  _groupExercises();
-                });
-                // データベースに保存
-                DatabaseHelper.instance.insertExercise(
-                  category: bodyPart.displayName,
-                  name: newExerciseName,
+                  // 保存に成功したらDBから最新状態を読み込む
+                  await _loadExercises();
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('保存失敗: $e')),
+                  );
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('種目名を入力してください')),
                 );
-                Navigator.pop(context);
               }
             },
             child: const Text('追加'),

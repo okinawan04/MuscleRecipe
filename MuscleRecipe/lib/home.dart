@@ -3,6 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'constants/app_colors.dart';
 import 'constants/app_text_styles.dart';
+import 'models/training_models.dart';
+import 'database_helper.dart';
 import 'widgets/custom_bottom_navigation_bar.dart';
 import 'widgets/tab_button.dart';
 import 'widgets/custom_elevated_button.dart';
@@ -20,6 +22,7 @@ class _HomePageState extends State<HomePage> {
   bool _showCalendar = true;
   DateTime _selectedDate = DateTime.now();
   late DateTime _displayedMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+  BodyPart? _selectedBodyPart; // グラフで選択された部位
 
   @override
   Widget build(BuildContext context) {
@@ -136,92 +139,238 @@ class _HomePageState extends State<HomePage> {
             '最大重量',
             style: AppTextStyles.sectionTitle,
           ),
+          const SizedBox(height: 12),
+          // 部位選択ボタン
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildBodyPartButton(null, 'すべて'),
+                const SizedBox(width: 8),
+                ...BodyPart.values.map((bodyPart) {
+                  return _buildBodyPartButton(bodyPart, bodyPart.displayName);
+                }).toList(),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: LineChart(
-                  LineChartData(
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: 50,
-                      getDrawingHorizontalLine: (value) {
-                        return FlLine(
-                          color: AppColors.gridLineColor.withValues(alpha: 0.2),
-                          strokeWidth: 1,
-                        );
-                      },
-                    ),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 30,
-                          getTitlesWidget: (value, meta) {
-                            const style = AppTextStyles.gridLabel;
-                            switch (value.toInt()) {
-                              case 0:
-                                return const Text('1月', style: style);
-                              case 3:
-                                return const Text('14日', style: style);
-                              case 6:
-                                return const Text('28日', style: style);
-                              default:
-                                return const Text('');
-                            }
-                          },
-                        ),
+            child: FutureBuilder<Map<BodyPart, double>>(
+              future: _getMaxWeightsByBodyPart(_selectedDate),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('エラーが発生しました: ${snapshot.error}'),
+                  );
+                }
+
+                final data = snapshot.data ?? {};
+
+                if (data.isEmpty) {
+                  return const Center(
+                    child: Text('この日付のトレーニングデータはありません'),
+                  );
+                }
+
+                // 表示するデータをフィルタリング
+                final Map<BodyPart, double> displayData;
+                if (_selectedBodyPart == null) {
+                  // すべてを表示
+                  displayData = data;
+                } else {
+                  // 選択した部位のみ表示
+                  displayData = data.containsKey(_selectedBodyPart)
+                      ? {_selectedBodyPart!: data[_selectedBodyPart]!}
+                      : {};
+                }
+
+                if (displayData.isEmpty) {
+                  return const Center(
+                    child: Text('選択した部位のデータはありません'),
+                  );
+                }
+
+                // グラフデータを作成
+                final List<FlSpot> spots = [];
+                int index = 0;
+                for (final weight in displayData.values) {
+                  spots.add(FlSpot(index.toDouble(), weight));
+                  index++;
+                }
+
+                // 最大値を取得してグラフの高さを決定
+                final maxWeight =
+                    displayData.values.reduce((a, b) => a > b ? a : b);
+                final graphMaxY = (maxWeight * 1.2).ceilToDouble();
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedBodyPart == null
+                            ? '全部位の最大重量'
+                            : '${_selectedBodyPart!.displayName}の最大重量',
+                        style: AppTextStyles.sectionTitle,
                       ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            const style = AppTextStyles.gridLabel;
-                            return Text(
-                              '${value.toInt()}',
-                              style: style,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    borderData: FlBorderData(
-                      show: false,
-                    ),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: const [
-                          FlSpot(0, 30),
-                          FlSpot(1, 40),
-                          FlSpot(2, 60),
-                          FlSpot(3, 50),
-                          FlSpot(4, 80),
-                          FlSpot(5, 90),
-                          FlSpot(6, 100),
-                        ],
-                        isCurved: true,
-                        color: AppColors.primaryColor,
-                        barWidth: 3,
-                        isStrokeCapRound: true,
-                        dotData: FlDotData(
-                          show: false,
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: LineChart(
+                          LineChartData(
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: 20,
+                              getDrawingHorizontalLine: (value) {
+                                return FlLine(
+                                  color: AppColors.gridLineColor
+                                      .withValues(alpha: 0.2),
+                                  strokeWidth: 1,
+                                );
+                              },
+                            ),
+                            titlesData: FlTitlesData(
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 30,
+                                  getTitlesWidget: (value, meta) {
+                                    final index = value.toInt();
+                                    if (index >= 0 &&
+                                        index < displayData.keys.length) {
+                                      final bodyPart =
+                                          displayData.keys.toList()[index];
+                                      return Transform.rotate(
+                                        angle: -0.3,
+                                        child: Text(
+                                          bodyPart.displayName,
+                                          style:
+                                              AppTextStyles.gridLabel.copyWith(
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return const Text('');
+                                  },
+                                ),
+                              ),
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    const style = AppTextStyles.gridLabel;
+                                    return Text(
+                                      '${value.toInt()}',
+                                      style: style,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(
+                              show: false,
+                            ),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: spots,
+                                isCurved: true,
+                                color: AppColors.primaryColor,
+                                barWidth: 3,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(
+                                  show: true,
+                                ),
+                              ),
+                            ],
+                            minY: 0,
+                            maxY: graphMaxY,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// 部位選択ボタン
+  Widget _buildBodyPartButton(BodyPart? bodyPart, String label) {
+    final isSelected = (bodyPart == null && _selectedBodyPart == null) ||
+        (bodyPart == _selectedBodyPart);
+
+    return ElevatedButton(
+      onPressed: () {
+        setState(() {
+          _selectedBodyPart = bodyPart;
+        });
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected
+            ? AppColors.primaryColor
+            : Colors.grey.withValues(alpha: 0.2),
+        foregroundColor:
+            isSelected ? Colors.white : AppColors.primaryColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  /// 指定日付の部位ごとの最大重量を取得
+  Future<Map<BodyPart, double>> _getMaxWeightsByBodyPart(
+      DateTime date) async {
+    final records =
+        await DatabaseHelper.instance.getTrainingRecordsByDate(date);
+
+    final Map<BodyPart, double> maxWeights = {};
+
+    for (final record in records) {
+      final categoryName = record['category'] as String?;
+      final weight = record['weight'] as double?;
+
+      if (categoryName != null && weight != null) {
+        // categoryName から BodyPart を取得
+        try {
+          final bodyPart = BodyPart.values.firstWhere(
+            (bp) => bp.displayName == categoryName,
+          );
+
+          // 最大重量を更新
+          if (!maxWeights.containsKey(bodyPart) ||
+              maxWeights[bodyPart]! < weight) {
+            maxWeights[bodyPart] = weight;
+          }
+        } catch (e) {
+          // BodyPart に該当しない場合はスキップ
+        }
+      }
+    }
+
+    return maxWeights;
   }
 
   Widget _buildCalendar() {

@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/training_models.dart';
-import '../providers/training_data_provider.dart';
 import '../constants/app_colors.dart';
 import '../database_helper.dart';
 import 'exercise_selection_screen.dart';
 import '../home.dart';
+import '../widgets/training_plan_modal.dart';
 
 class MenuListScreen extends StatefulWidget {
   final DateTime? selectedDate;
+  final List<TrainingMenu>? planMenus;
+  final TrainingPlan? trainingPlan;
+  final List<int>? selectedWeekdays;
+  final Map<String, List<TrainingMenu>>? weekdayMenuMap;
 
-  const MenuListScreen({super.key, this.selectedDate});
+  const MenuListScreen({
+    super.key,
+    this.selectedDate,
+    this.planMenus,
+    this.trainingPlan,
+    this.selectedWeekdays,
+    this.weekdayMenuMap,
+  });
 
   @override
   State<MenuListScreen> createState() => _MenuListScreenState();
@@ -25,7 +35,77 @@ class _MenuListScreenState extends State<MenuListScreen> {
   void initState() {
     super.initState();
     _selectedDate = widget.selectedDate ?? DateTime.now();
+    _addPlanMenusIfProvided();
     _loadTrainingRecords();
+  }
+
+  Future<void> _addPlanMenusIfProvided() async {
+    try {
+      final db = DatabaseHelper.instance;
+      final database = await db.database;
+
+      if (widget.weekdayMenuMap != null && widget.weekdayMenuMap!.isNotEmpty) {
+        for (final entry in widget.weekdayMenuMap!.entries) {
+          final dateString = entry.key;
+          final menuList = entry.value;
+
+          for (final menu in menuList) {
+            final rows = await database.query(
+              'training_menus',
+              where: 'name = ?',
+              whereArgs: [menu.exerciseName],
+            );
+
+            if (rows.isNotEmpty) {
+              final menuId = rows.first['id'] as int;
+              await db.insertTrainingRecord(
+                menuId: menuId,
+                trainingDate: dateString,
+                setNumber: menu.setNumber,
+                weight: menu.weight,
+                reps: menu.reps,
+                memo: menu.memo,
+              );
+            }
+          }
+        }
+      } else if (widget.planMenus != null && widget.planMenus!.isNotEmpty) {
+        for (final menu in widget.planMenus!) {
+          final rows = await database.query(
+            'training_menus',
+            where: 'name = ?',
+            whereArgs: [menu.exerciseName],
+          );
+
+          if (rows.isNotEmpty) {
+            final menuId = rows.first['id'] as int;
+            await db.insertTrainingRecord(
+              menuId: menuId,
+              trainingDate: _selectedDate.toString().split(' ')[0],
+              setNumber: menu.setNumber,
+              weight: menu.weight,
+              reps: menu.reps,
+              memo: menu.memo,
+            );
+          }
+        }
+      }
+
+      if (mounted) {
+        await _loadTrainingRecords();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('トレーニングプランを追加しました')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('プラン追加エラー: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _loadTrainingRecords() async {
@@ -158,12 +238,15 @@ class _MenuListScreenState extends State<MenuListScreen> {
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        exerciseName,
-                                        style: const TextStyle(
-                                          color: AppColors.primaryColor,
+                                      Center(
+                                        child: Text(
+                                          exerciseName,
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: AppColors.primaryColor,
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -248,7 +331,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
             ),
           );
 
-          if (result != null && mounted) {
+          if (result == true && mounted) {
             // リロード
             _loadTrainingRecords();
           }

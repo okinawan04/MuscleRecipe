@@ -19,6 +19,8 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
+    await deleteDatabase(path);
+
     return await openDatabase(
       path,
       version: 1,
@@ -119,7 +121,7 @@ class DatabaseHelper {
       CREATE TABLE training_menus (
         id $idType,
         category $textType,
-        name $textType,
+        name $textType UNIQUE,
         is_active $boolType DEFAULT 1,
         created_at $textType,
         updated_at $textType
@@ -167,7 +169,7 @@ class DatabaseHelper {
     }
   }
 
-  /// 新しい種目をtraining_menusテーブルに追加
+  /// 新しい種目をtraining_menusテーブルに追加（既存の場合は既存IDを返す）
   Future<int> insertExercise({
     required String category,
     required String name,
@@ -175,6 +177,19 @@ class DatabaseHelper {
     final db = await database;
     final now = DateTime.now().toIso8601String();
 
+    // 既存の種目があるかチェック
+    final existingExercises = await db.query(
+      'training_menus',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
+
+    if (existingExercises.isNotEmpty) {
+      // 既存の種目があれば、そのIDを返す
+      return existingExercises.first['id'] as int;
+    }
+
+    // 新規作成
     return await db.insert(
       'training_menus',
       {

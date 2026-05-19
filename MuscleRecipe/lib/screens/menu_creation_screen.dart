@@ -278,7 +278,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                       // Save training menu to database
                       await _saveTrainingRecords();
                       if (mounted) {
-                        Navigator.pop(context);
+                        Navigator.pop(context, true);
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -465,38 +465,34 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
   Future<void> _saveTrainingRecords() async {
     try {
       final db = DatabaseHelper.instance;
-      final now = DateTime.now().toIso8601String();
+      final dateString = widget.date.toIso8601String();
 
-      // Get or create the exercise in training_menus table
-      final exerciseMap = {
-        'category': widget.exercise.bodyPart.displayName,
-        'name': widget.exercise.name,
-        'is_active': 1,
-        'created_at': now,
-        'updated_at': now,
-      };
+      // 1. 種目マスター(training_menus)に登録。
+    // ここで DatabaseHelper 側が「同じ名前なら既存IDを返す」ロジックなら、
+    // 種目マスターに同じ名前が溢れることはありません。
+    final menuId = await db.insertExercise(
+      category: widget.exercise.bodyPart.displayName,
+      name: widget.exercise.name,
+    );
 
-      final menuId = await db.insertExercise(
-        category: widget.exercise.bodyPart.displayName,
-        name: widget.exercise.name,
+    // 2. セットごとの記録を保存
+    // 日付、重量、回数が同じでも「別のID」として保存されるようにします
+    for (int i = 0; i < sets.length; i++) {
+      final weight = double.tryParse(_weightControllers[i].text) ?? 0.0;
+      final reps = int.tryParse(_repControllers[i].text) ?? 0;
+      final memo = _memoControllers[i].text.isEmpty ? null : _memoControllers[i].text;
+
+      // 日付(dateString)が含まれているため、別の日なら別のデータとして保存されます
+      await db.insertTrainingRecord(
+        menuId: menuId,
+        trainingDate: dateString, 
+        setNumber: i + 1, // i + 1 でセット数を確実にする
+        weight: weight,
+        reps: reps,
+        restSeconds: restTimeSeconds,
+        memo: memo,
       );
-
-      // Save each set as a training record
-      for (int i = 0; i < sets.length; i++) {
-        final weight = double.tryParse(_weightControllers[i].text) ?? 0.0;
-        final reps = int.tryParse(_repControllers[i].text) ?? 0;
-        final memo = _memoControllers[i].text.isEmpty ? null : _memoControllers[i].text;
-
-        await db.insertTrainingRecord(
-          menuId: menuId,
-          trainingDate: widget.date.toIso8601String(),
-          setNumber: sets[i].setNumber,
-          weight: weight,
-          reps: reps,
-          restSeconds: restTimeSeconds,
-          memo: memo,
-        );
-      }
+    }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('保存に失敗しました: $e')),
