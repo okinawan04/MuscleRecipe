@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'screens/recipe_list_screen.dart';
 
-void main() {
+void main() async{
+  await dotenv.load();
+
   runApp(const MainApp());
 }
 
