@@ -263,6 +263,44 @@ Future<List<Map<String, dynamic>>> getExercises() async {
     ''', ['$dateString%']);
   }
 
+  /// 指定期間のトレーニング記録を取得
+  Future<List<Map<String, dynamic>>> getTrainingRecordsByDateRange(
+      DateTime startDate, DateTime endDate) async {
+    final db = await database;
+    final startDateString = startDate.toIso8601String().split('T')[0];
+    final endDateString = endDate.toIso8601String().split('T')[0];
+
+    return await db.rawQuery('''
+      SELECT 
+        tr.id,
+        tr.menu_id,
+        tr.training_date,
+        tr.set_number,
+        tr.weight,
+        tr.reps,
+        tr.rest_seconds,
+        tr.is_completed,
+        tr.memo,
+        tm.name,
+        tm.category
+      FROM training_records tr
+      JOIN training_menus tm ON tr.menu_id = tm.id
+      WHERE tr.training_date BETWEEN ? AND ?
+      ORDER BY tr.training_date, tr.set_number
+    ''', [startDateString, endDateString]);
+  }
+
+  /// 指定メニュー・日付のトレーニング記録を削除
+  Future<int> deleteTrainingRecordsByMenuIdAndDate(
+      int menuId, String trainingDate) async {
+    final db = await database;
+    return await db.delete(
+      'training_records',
+      where: 'menu_id = ? AND training_date LIKE ?',
+      whereArgs: [menuId, '$trainingDate%'],
+    );
+  }
+
   /// トレーニング記録を削除
   Future<int> deleteTrainingRecord(int recordId) async {
     final db = await database;

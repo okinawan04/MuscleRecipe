@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../constants/app_colors.dart';
 import '../database_helper.dart';
+import '../models/training_models.dart' as models;
 import 'exercise_selection_screen.dart';
+import 'menu_creation_screen.dart';
 import '../home.dart';
 import '../widgets/training_plan_modal.dart';
 
@@ -35,14 +37,24 @@ class _MenuListScreenState extends State<MenuListScreen> {
   void initState() {
     super.initState();
     _selectedDate = widget.selectedDate ?? DateTime.now();
-    _addPlanMenusIfProvided();
-    _loadTrainingRecords();
+    _initialize();
   }
 
-  Future<void> _addPlanMenusIfProvided() async {
+  Future<void> _initialize() async {
+    final planAdded = await _addPlanMenusIfProvided();
+    await _loadTrainingRecords();
+    if (planAdded && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('トレーニングプランを追加しました')),
+      );
+    }
+  }
+
+  Future<bool> _addPlanMenusIfProvided() async {
     try {
       final db = DatabaseHelper.instance;
       final database = await db.database;
+      bool planAdded = false;
 
       if (widget.weekdayMenuMap != null && widget.weekdayMenuMap!.isNotEmpty) {
         for (final entry in widget.weekdayMenuMap!.entries) {
@@ -69,6 +81,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
             }
           }
         }
+        planAdded = true;
       } else if (widget.planMenus != null && widget.planMenus!.isNotEmpty) {
         for (final menu in widget.planMenus!) {
           final rows = await database.query(
@@ -89,22 +102,17 @@ class _MenuListScreenState extends State<MenuListScreen> {
             );
           }
         }
+        planAdded = true;
       }
 
-      if (mounted) {
-        await _loadTrainingRecords();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('トレーニングプランを追加しました')),
-          );
-        }
-      }
+      return planAdded;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('プラン追加エラー: $e')),
         );
       }
+      return false;
     }
   }
 
@@ -227,6 +235,9 @@ class _MenuListScreenState extends State<MenuListScreen> {
                             final exercises = _getGroupedExercises();
                             final exerciseName = exercises.keys.toList()[index];
                             final sets = exercises[exerciseName] ?? [];
+                            final bodyPart = _getBodyPartFromCategory(
+                              sets.isNotEmpty ? sets.first['category'] as String? : null,
+                            );
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -240,14 +251,34 @@ class _MenuListScreenState extends State<MenuListScreen> {
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Center(
-                                        child: Text(
-                                          exerciseName,
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            color: AppColors.primaryColor,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
+                                      GestureDetector(
+                                        onTap: () async {
+                                          final result = await Navigator.push<bool>(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => MenuCreationScreen(
+                                                exercise: models.Exercise(
+                                                  name: exerciseName,
+                                                  bodyPart: bodyPart,
+                                                ),
+                                                date: _selectedDate,
+                                                existingRecords: sets,
+                                              ),
+                                            ),
+                                          );
+                                          if (result == true && mounted) {
+                                            await _loadTrainingRecords();
+                                          }
+                                        },
+                                        child: Center(
+                                          child: Text(
+                                            exerciseName,
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: AppColors.primaryColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -300,7 +331,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
                                     right: 0,
                                     child: GestureDetector(
                                       onTap: () => _deleteExerciseSet(
-                                        sets.first['id'] as int,
+                                        sets.first['menu_id'] as int,
                                         exerciseName,
                                       ),
                                       child: Container(
@@ -329,13 +360,13 @@ class _MenuListScreenState extends State<MenuListScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const ExerciseSelectionScreen(),
+              builder: (context) => ExerciseSelectionScreen(selectedDate: _selectedDate),
             ),
           );
 
           if (result == true && mounted) {
             // リロード
-            _loadTrainingRecords();
+            await _loadTrainingRecords();
           }
         },
         child: const Icon(Icons.add, color: Colors.white),
@@ -377,16 +408,24 @@ class _MenuListScreenState extends State<MenuListScreen> {
     return grouped;
   }
 
-  Future<void> _deleteExerciseSet(int recordId, String exerciseName) async {
+  models.BodyPart _getBodyPartFromCategory(String? categoryName) {
+    return models.BodyPart.values.firstWhere(
+      (bp) => bp.displayName == categoryName,
+      orElse: () => models.BodyPart.chest,
+    );
+  }
+
+  Future<void> _deleteExerciseSet(int menuId, String exerciseName) async {
     try {
       final db = DatabaseHelper.instance;
-      
+      final dateString = _selectedDate.toIso8601String().split('T')[0];
+
       // Show confirmation dialog
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('削除確認'),
-          content: Text('$exerciseName を削除してもよろしいですか？'),
+          content: Text('$exerciseName の全セットを削除してもよろしいですか？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -394,18 +433,18 @@ class _MenuListScreenState extends State<MenuListScreen> {
             ),
             TextButton(
               onPressed: () async {
-                // Delete from database
-                await db.deleteTrainingRecord(recordId);
-                
+                // Delete all sets of this exercise for the selected date
+                await db.deleteTrainingRecordsByMenuIdAndDate(menuId, dateString);
+
                 // Remove from UI
                 setState(() {
-                  _trainingRecords.removeWhere((record) => record['id'] == recordId);
+                  _trainingRecords.removeWhere((record) => record['menu_id'] == menuId);
                 });
-                
+
                 if (mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('削除しました')),
+                    const SnackBar(content: Text('種目を削除しました')),
                   );
                 }
               },

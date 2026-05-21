@@ -23,6 +23,14 @@ class TrainingDataProvider {
         bodyPart: BodyPart.chest,
       ),
       Exercise(
+        name: 'インクラインプレス',
+        bodyPart: BodyPart.chest,
+      ),
+      Exercise(
+        name: 'ダンベルフライ',
+        bodyPart: BodyPart.chest,
+      ),
+      Exercise(
         name: 'チェストフライ',
         bodyPart: BodyPart.chest,
       ),
@@ -74,6 +82,10 @@ class TrainingDataProvider {
         bodyPart: BodyPart.leg,
       ),
       Exercise(
+        name: 'バーベルスクワット',
+        bodyPart: BodyPart.leg,
+      ),
+      Exercise(
         name: 'レッグプレス',
         bodyPart: BodyPart.leg,
       ),
@@ -100,6 +112,10 @@ class TrainingDataProvider {
       ),
       Exercise(
         name: 'トライセプスプレス',
+        bodyPart: BodyPart.arm,
+      ),
+      Exercise(
+        name: 'トライセプスロープ',
         bodyPart: BodyPart.arm,
       ),
       Exercise(

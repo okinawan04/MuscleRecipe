@@ -6,7 +6,9 @@ import 'menu_creation_screen.dart';
 import '../database_helper.dart';
 
 class ExerciseSelectionScreen extends StatefulWidget {
-  const ExerciseSelectionScreen({super.key});
+  final DateTime? selectedDate;
+
+  const ExerciseSelectionScreen({super.key, this.selectedDate});
 
   @override
   State<ExerciseSelectionScreen> createState() =>
@@ -247,7 +249,7 @@ Future<void> _loadExercises() async {
           MaterialPageRoute(
             builder: (context) => MenuCreationScreen(
               exercise: exercise,
-              date: DateTime.now(), // Pass the current date
+              date: widget.selectedDate ?? DateTime.now(), // Use selected date or current date
             ),
           ),
         );

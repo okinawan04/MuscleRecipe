@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -155,8 +157,8 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: FutureBuilder<Map<BodyPart, double>>(
-              future: _getMaxWeightsByBodyPart(_selectedDate),
+            child: FutureBuilder<Map<String, double>>(
+              future: _getMaxWeightsByDateRange(_selectedDate, _selectedBodyPart),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -174,40 +176,32 @@ class _HomePageState extends State<HomePage> {
 
                 if (data.isEmpty) {
                   return const Center(
-                    child: Text('この日付のトレーニングデータはありません'),
+                    child: Text('この期間のトレーニングデータはありません'),
                   );
                 }
 
-                // 表示するデータをフィルタリング
-                final Map<BodyPart, double> displayData;
-                if (_selectedBodyPart == null) {
-                  // すべてを表示
-                  displayData = data;
-                } else {
-                  // 選択した部位のみ表示
-                  displayData = data.containsKey(_selectedBodyPart)
-                      ? {_selectedBodyPart!: data[_selectedBodyPart]!}
-                      : {};
-                }
+                final startDate = _selectedDate.subtract(const Duration(days: 6));
+                final dateKeys = List.generate(7, (index) {
+                  final date = startDate.add(Duration(days: index));
+                  return date.toIso8601String().split('T')[0];
+                });
+                final dateLabels = List.generate(
+                  7,
+                  (index) => DateFormat('MM/dd', 'ja_JP')
+                      .format(startDate.add(Duration(days: index))),
+                );
 
-                if (displayData.isEmpty) {
-                  return const Center(
-                    child: Text('選択した部位のデータはありません'),
-                  );
-                }
+                final spots = List<FlSpot>.generate(7, (index) {
+                  final dateKey = dateKeys[index];
+                  final weight = data[dateKey] ?? 0.0;
+                  return FlSpot(index.toDouble(), weight);
+                });
 
-                // グラフデータを作成
-                final List<FlSpot> spots = [];
-                int index = 0;
-                for (final weight in displayData.values) {
-                  spots.add(FlSpot(index.toDouble(), weight));
-                  index++;
-                }
-
-                // 最大値を取得してグラフの高さを決定
-                final maxWeight =
-                    displayData.values.reduce((a, b) => a > b ? a : b);
-                final graphMaxY = (maxWeight * 1.2).ceilToDouble();
+                final maxWeight = spots.map((spot) => spot.y).fold<double>(
+                  0.0,
+                  (previousValue, element) => max(previousValue, element),
+                );
+                final graphMaxY = max(20.0, (maxWeight * 1.2).ceilToDouble());
 
                 return Container(
                   decoration: BoxDecoration(
@@ -244,17 +238,15 @@ class _HomePageState extends State<HomePage> {
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 30,
+                                  reservedSize: 36,
+                                  interval: 1,
                                   getTitlesWidget: (value, meta) {
                                     final index = value.toInt();
-                                    if (index >= 0 &&
-                                        index < displayData.keys.length) {
-                                      final bodyPart =
-                                          displayData.keys.toList()[index];
+                                    if (index >= 0 && index < dateLabels.length) {
                                       return Transform.rotate(
-                                        angle: -0.3,
+                                        angle: -0.4,
                                         child: Text(
-                                          bodyPart.displayName,
+                                          dateLabels[index],
                                           style:
                                               AppTextStyles.gridLabel.copyWith(
                                             fontSize: 10,
@@ -269,6 +261,7 @@ class _HomePageState extends State<HomePage> {
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
+                                  interval: 20,
                                   getTitlesWidget: (value, meta) {
                                     const style = AppTextStyles.gridLabel;
                                     return Text(
@@ -280,7 +273,10 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             borderData: FlBorderData(
-                              show: false,
+                              show: true,
+                              border: Border.all(
+                                color: AppColors.gridLineColor.withValues(alpha: 0.3),
+                              ),
                             ),
                             lineBarsData: [
                               LineChartBarData(
@@ -294,6 +290,8 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ],
+                            minX: 0,
+                            maxX: 6,
                             minY: 0,
                             maxY: graphMaxY,
                           ),
@@ -340,37 +338,38 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// 指定日付の部位ごとの最大重量を取得
-  Future<Map<BodyPart, double>> _getMaxWeightsByBodyPart(
-      DateTime date) async {
-    final records =
-        await DatabaseHelper.instance.getTrainingRecordsByDate(date);
+  /// 指定期間の部位ごとの最大重量を取得
+  Future<Map<String, double>> _getMaxWeightsByDateRange(
+    DateTime endDate,
+    BodyPart? selectedBodyPart,
+  ) async {
+    final startDate = endDate.subtract(const Duration(days: 6));
+    final records = await DatabaseHelper.instance
+        .getTrainingRecordsByDateRange(startDate, endDate);
 
-    final Map<BodyPart, double> maxWeights = {};
+    final Map<String, double> maxWeightsByDate = {};
+    final selectedCategory = selectedBodyPart?.displayName;
 
     for (final record in records) {
       final categoryName = record['category'] as String?;
-      final weight = record['weight'] as double?;
+      final weight = (record['weight'] as num?)?.toDouble();
+      final trainingDate = record['training_date'] as String?;
 
-      if (categoryName != null && weight != null) {
-        // categoryName から BodyPart を取得
-        try {
-          final bodyPart = BodyPart.values.firstWhere(
-            (bp) => bp.displayName == categoryName,
-          );
+      if (categoryName == null || weight == null || trainingDate == null) {
+        continue;
+      }
+      if (selectedCategory != null && categoryName != selectedCategory) {
+        continue;
+      }
 
-          // 最大重量を更新
-          if (!maxWeights.containsKey(bodyPart) ||
-              maxWeights[bodyPart]! < weight) {
-            maxWeights[bodyPart] = weight;
-          }
-        } catch (e) {
-          // BodyPart に該当しない場合はスキップ
-        }
+      final dateKey = trainingDate.split(' ')[0];
+      if (!maxWeightsByDate.containsKey(dateKey) ||
+          maxWeightsByDate[dateKey]! < weight) {
+        maxWeightsByDate[dateKey] = weight;
       }
     }
 
-    return maxWeights;
+    return maxWeightsByDate;
   }
 
   Widget _buildCalendar() {

@@ -3,17 +3,18 @@ import '../models/training_models.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../database_helper.dart';
-import 'menu_list_screen.dart';
 import 'dart:async'; // ★タイマーを使うために必要です
 
 class MenuCreationScreen extends StatefulWidget {
   final Exercise exercise;
   final DateTime date;
+  final List<Map<String, dynamic>>? existingRecords;
 
   const MenuCreationScreen({
     super.key,
     required this.exercise,
     required this.date,
+    this.existingRecords,
   });
 
   @override
@@ -34,15 +35,27 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize with 4 sets
-    sets = List.generate(
-      4,
-      (index) => TrainingSet(
-        setNumber: index + 1,
-        reps: 0,
-        weight: 0.0,
-      ),
-    );
+    if (widget.existingRecords != null && widget.existingRecords!.isNotEmpty) {
+      sets = widget.existingRecords!.map((record) {
+        final weight = (record['weight'] as num?)?.toDouble() ?? 0.0;
+        final reps = record['reps'] as int? ?? 0;
+        final setNumber = record['set_number'] as int? ?? 1;
+        return TrainingSet(
+          setNumber: setNumber,
+          reps: reps,
+          weight: weight,
+        );
+      }).toList();
+    } else {
+      sets = List.generate(
+        4,
+        (index) => TrainingSet(
+          setNumber: index + 1,
+          reps: 0,
+          weight: 0.0,
+        ),
+      );
+    }
     _initializeControllers();
   }
 
@@ -50,19 +63,24 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
     _weightControllers.clear();
     _repControllers.clear();
     _memoControllers.clear();
-    for (final set in sets) {
+    for (int i = 0; i < sets.length; i++) {
+      final set = sets[i];
       _weightControllers.add(
         TextEditingController(text: set.weight > 0 ? set.weight.toString() : ''),
       );
       _repControllers.add(
         TextEditingController(text: set.reps > 0 ? set.reps.toString() : ''),
       );
-      _memoControllers.add(TextEditingController());
+      final memo = widget.existingRecords != null && widget.existingRecords!.length > i
+          ? widget.existingRecords![i]['memo'] as String? ?? ''
+          : '';
+      _memoControllers.add(TextEditingController(text: memo));
     }
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _restTimeController.dispose();
     for (final controller in _weightControllers) {
       controller.dispose();
@@ -145,8 +163,10 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
+          style: const TextStyle(color: Colors.white70),
           decoration: InputDecoration(
             hintText: '秒数を入力',
+            hintStyle: const TextStyle(color: Colors.white70),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -155,14 +175,20 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('キャンセル'),
+            child: const Text(
+              'キャンセル',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () {
               _updateRestTime(controller.text);
               Navigator.pop(context);
             },
-            child: const Text('設定'),
+            child: const Text(
+              '設定',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           // ★ 新しく追加した「スタート」ボタン
         ElevatedButton(
@@ -185,7 +211,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
           },
           child: const Text(
             'スタート',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
           ),
         ),
         ],
@@ -243,13 +269,8 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        // Pass the updated data back to MenuListScreen
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const MenuListScreen(),
-                          ),
-                        );
-                      },
+                      Navigator.pop(context);
+                    },
                       child: const Icon(
                         Icons.chevron_left,
                         color: Colors.white,
@@ -525,7 +546,7 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
   Future<void> _saveTrainingRecords() async {
     try {
       final db = DatabaseHelper.instance;
-      final dateString = widget.date.toIso8601String();
+      final dateString = widget.date.toIso8601String().split('T')[0];
 
       // 1. 種目マスター(training_menus)に登録。
     // ここで DatabaseHelper 側が「同じ名前なら既存IDを返す」ロジックなら、
@@ -535,6 +556,10 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
       name: widget.exercise.name,
     );
 
+    if (widget.existingRecords != null && widget.existingRecords!.isNotEmpty) {
+      await db.deleteTrainingRecordsByMenuIdAndDate(menuId, dateString);
+    }
+
     // 2. セットごとの記録を保存
     // 日付、重量、回数が同じでも「別のID」として保存されるようにします
     for (int i = 0; i < sets.length; i++) {
@@ -542,10 +567,9 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
       final reps = int.tryParse(_repControllers[i].text) ?? 0;
       final memo = _memoControllers[i].text.isEmpty ? null : _memoControllers[i].text;
 
-      // 日付(dateString)が含まれているため、別の日なら別のデータとして保存されます
       await db.insertTrainingRecord(
         menuId: menuId,
-        trainingDate: dateString, 
+        trainingDate: dateString,
         setNumber: i + 1, // i + 1 でセット数を確実にする
         weight: weight,
         reps: reps,
