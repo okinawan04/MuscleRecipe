@@ -600,6 +600,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButton<int>(
+                      dropdownColor: AppColors.backgroundColor,
                       value: selectedYear,
                       isExpanded: true,
                       items: List.generate(
@@ -608,7 +609,12 @@ class _HomePageState extends State<HomePage> {
                           final year = 2020 + index;
                           return DropdownMenuItem(
                             value: year,
-                            child: Text('$year年'),
+                            child: Text(
+                              '$year年',
+                              style: TextStyle(
+                                color: Colors.white70,
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -631,6 +637,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButton<int>(
+                      dropdownColor: AppColors.backgroundColor,
                       value: selectedMonth,
                       isExpanded: true,
                       items: List.generate(
@@ -639,7 +646,12 @@ class _HomePageState extends State<HomePage> {
                           final month = index + 1;
                           return DropdownMenuItem(
                             value: month,
-                            child: Text('$month月'),
+                            child: Text(
+                              '$month月',
+                              style: TextStyle(
+                              color: Colors.white70,
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -660,7 +672,7 @@ class _HomePageState extends State<HomePage> {
                   child: Text(
                     'キャンセル',
                     style: AppTextStyles.buttonText.copyWith(
-                      color: AppColors.primaryColor,
+                      color: AppTextStyles.buttonText.color,
                     ),
                   ),
                 ),
@@ -675,7 +687,7 @@ class _HomePageState extends State<HomePage> {
                   child: Text(
                     '決定',
                     style: AppTextStyles.buttonText.copyWith(
-                      color: AppColors.primaryColor,
+                      color: AppTextStyles.buttonText.color,
                     ),
                   ),
                 ),
@@ -687,4 +699,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
