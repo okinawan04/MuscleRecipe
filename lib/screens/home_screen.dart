@@ -78,10 +78,10 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
         elevation: 0,
         backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFFC48600)
+            ? const Color(0xFF4FC3F7)
             : const Color(0xFFFFB300),
         foregroundColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white
+            ? Colors.black
             : Colors.black,
       ),
       body: SingleChildScrollView(

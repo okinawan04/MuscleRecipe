@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'database_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/training_screen.dart';
@@ -7,7 +9,12 @@ import 'screens/recipe_screen.dart';
 import 'screens/inventory_screen.dart';
 import 'screens/account_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Web環境ではsqfliteが動作しないため、モバイル・デスクトップのみでDB初期化
+  if (!kIsWeb) {
+    await DatabaseHelper.instance.ensureDefaultData();
+  }
   runApp(const MyApp());
 }
 

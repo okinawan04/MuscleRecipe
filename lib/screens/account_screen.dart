@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io';
+import '../database_helper.dart';
 
 class AccountScreen extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -24,9 +26,9 @@ class _AccountScreenState extends State<AccountScreen> {
   String _accountName = 'ユーザー名';
   String _height = '';
   String _weight = '';
+  String _age = '';
   String _gender = '男性';
   String _trainingGoal = 'がっつり筋トレ';
-  final List<String> _purchaseLogs = [];
 
   final ImagePicker _picker = ImagePicker();
 
@@ -40,7 +42,37 @@ class _AccountScreenState extends State<AccountScreen> {
   ];
 
   final List<String> _genders = ['男性', '女性', 'その他'];
-  final List<String> _trainingGoals = ['がっつり筋トレ', 'ダイエット', '健康'];
+  List<String> _trainingGoals = ['がっつり筋トレ', 'ダイエット', '健康'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    if (kIsWeb) {
+      return;
+    }
+    try {
+      final user = await DatabaseHelper.instance.getUser();
+      if (user != null && mounted) {
+        setState(() {
+          _accountName = user['name'] ?? 'ユーザー名';
+          _height = user['height']?.toString() ?? '';
+          _weight = user['weight']?.toString() ?? '';
+          _age = user['age']?.toString() ?? '';
+          _gender = user['gender'] ?? '男性';
+          _trainingGoal = user['training_preference'] ?? 'がっつり筋トレ';
+          if (!_trainingGoals.contains(_trainingGoal)) {
+            _trainingGoals.add(_trainingGoal);
+          }
+        });
+      }
+    } catch (e) {
+      // DB読み込みエラーは無視
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,10 +81,10 @@ class _AccountScreenState extends State<AccountScreen> {
         title: const Text('アカウント'),
         centerTitle: true,
         backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFFC48600)
+            ? const Color(0xFF4FC3F7)
             : const Color(0xFFFFB300),
         foregroundColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white
+            ? Colors.black
             : Colors.black,
       ),
       body: SingleChildScrollView(
@@ -60,19 +92,12 @@ class _AccountScreenState extends State<AccountScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // アカウント情報セクション
               _buildAccountInfo(),
               const SizedBox(height: 24),
-
-              // その他の項目を一覧表示するまとめセクション
               _buildGroupedAccountSection(),
               const SizedBox(height: 24),
-
-              // 利用規約・プライバシーポリシー・お問い合わせ
-              _buildLegalSupportSection(),
+              _buildSupportSection(),
               const SizedBox(height: 24),
-
-              // ログアウトセクション
               _buildLogout(),
             ],
           ),
@@ -146,6 +171,7 @@ class _AccountScreenState extends State<AccountScreen> {
             subtitle: Text(
               '身長: ${_height.isEmpty ? '未設定' : '$_height cm'}\n'
               '体重: ${_weight.isEmpty ? '未設定' : '$_weight kg'}\n'
+              '年齢: ${_age.isEmpty ? '未設定' : '$_age 歳'}\n'
               '性別: $_gender',
             ),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -156,54 +182,20 @@ class _AccountScreenState extends State<AccountScreen> {
           const Divider(height: 1),
           ListTile(
             title: const Text('トレーニング志向'),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: SegmentedButton<String>(
-                segments: _trainingGoals
-                    .map((goal) => ButtonSegment(value: goal, label: Text(goal)))
-                    .toList(),
-                selected: <String>{_trainingGoal},
-                showSelectedIcon: false,
-                onSelectionChanged: (newSelection) {
-                  if (newSelection.isNotEmpty) {
-                    setState(() {
-                      _trainingGoal = newSelection.first;
-                    });
-                  }
-                },
-              ),
-            ),
+            subtitle: Text('目標: $_trainingGoal'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showTrainingGoalDialog,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
           const Divider(height: 1),
           ListTile(
             title: const Text('テーマ設定'),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: SegmentedButton<ThemeMode>(
-                segments: const <ButtonSegment<ThemeMode>>[
-                  ButtonSegment(value: ThemeMode.light, label: Text('ライト')),
-                  ButtonSegment(value: ThemeMode.dark, label: Text('ダーク')),
-                ],
-                selected: <ThemeMode>{widget.currentThemeMode},
-                showSelectedIcon: false,
-                onSelectionChanged: (newSelection) {
-                  if (newSelection.isNotEmpty) {
-                    widget.onThemeModeChanged?.call(newSelection.first);
-                  }
-                },
-              ),
+            subtitle: Text(
+              widget.currentThemeMode == ThemeMode.light ? 'ライトモード' : 'ダークモード',
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: const Text('購入ログ'),
-            subtitle: Text('${_purchaseLogs.length}件の購入記録'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showPurchaseLogDialog,
+            onTap: _showThemeDialog,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
@@ -212,201 +204,127 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  void _showThemeSettingDialog() {
-    ThemeMode tempMode = widget.currentThemeMode;
+  Widget _buildSupportSection() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            title: const Text('利用規約'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showTermsDialog,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('プライバシーポリシー'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showPrivacyDialog,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('お問い合わせ'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showContactDialog,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ],
+      ),
+    );
+  }
 
+  void _showTermsDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, dialogSetState) {
-            return AlertDialog(
-              title: const Text('テーマ設定'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RadioListTile<ThemeMode>(
-                    value: ThemeMode.light,
-                    groupValue: tempMode,
-                    title: const Text('ライトモード'),
-                    onChanged: (value) {
-                      if (value != null) {
-                        dialogSetState(() {
-                          tempMode = value;
-                        });
-                      }
-                    },
-                  ),
-                  RadioListTile<ThemeMode>(
-                    value: ThemeMode.dark,
-                    groupValue: tempMode,
-                    title: const Text('ダークモード'),
-                    onChanged: (value) {
-                      if (value != null) {
-                        dialogSetState(() {
-                          tempMode = value;
-                        });
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('キャンセル'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    widget.onThemeModeChanged?.call(tempMode);
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('保存'),
-                ),
-              ],
-            );
-          },
+        return AlertDialog(
+          title: const Text('利用規約'),
+          content: SingleChildScrollView(
+            child: const Text(
+              '本アプリのご利用にあたっては、以下の内容に同意していただく必要があります。\n\n'
+              '1. 本アプリは健康管理の参考情報を提供します。\n'
+              '2. 本アプリの情報に依存した結果については責任を負いません。\n'
+              '3. 利用者は自己の判断で適切な運動・食事管理を行ってください。',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildPhysicalInfo() {
-    return InkWell(
-      onTap: _showPhysicalInfoDialog,
-      borderRadius: BorderRadius.circular(12),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '身体情報',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Icon(
-                    Icons.edit,
-                    color: Colors.grey[600],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text('身長: ${_height.isEmpty ? '未設定' : '$_height cm'}'),
-              Text('体重: ${_weight.isEmpty ? '未設定' : '$_weight kg'}'),
-              Text('性別: $_gender'),
-            ],
+  void _showPrivacyDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('プライバシーポリシー'),
+          content: SingleChildScrollView(
+            child: const Text(
+              '本アプリは、利用者の入力した身体情報をアプリ内で管理します。\n\n'
+              '1. 個人情報は端末内で保存され、外部に送信されません。\n'
+              '2. アプリの機能向上のために、利用状況の分析を行う場合がありますが、個人が特定される形ではありません。\n'
+              '3. 利用者はいつでもデータの編集・削除が可能です。',
+            ),
           ),
-        ),
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildTrainingGoal() {
-    return InkWell(
-      onTap: _showTrainingGoalDialog,
-      borderRadius: BorderRadius.circular(12),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'トレーニング志向',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Icon(
-                    Icons.edit,
-                    color: Colors.grey[600],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text('目標: $_trainingGoal'),
-            ],
+  void _showContactDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('お問い合わせ'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('ご意見・ご要望・不具合報告は、以下のメールアドレスまでお送りください。'),
+                SizedBox(height: 12),
+                SelectableText('support@musclerecipe.app'),
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPurchaseLog() {
-    return InkWell(
-      onTap: _showPurchaseLogDialog,
-      borderRadius: BorderRadius.circular(12),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '購入ログ',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Icon(
-                    Icons.edit,
-                    color: Colors.grey[600],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text('${_purchaseLogs.length}件の購入記録'),
-            ],
-          ),
-        ),
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildLogout() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout),
-                label: const Text('ログアウト'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Google、Apple、メールアドレスでのログイン機能は近日実装予定です',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _logout,
+        icon: const Icon(Icons.logout),
+        label: const Text('ログアウト'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
         ),
       ),
     );
@@ -428,9 +346,6 @@ class _AccountScreenState extends State<AccountScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('アイコンを選択'),
-                    const SizedBox(height: 12),
-                    // 現在のアイコン表示
                     CircleAvatar(
                       radius: 32,
                       backgroundImage: tempImage,
@@ -438,7 +353,6 @@ class _AccountScreenState extends State<AccountScreen> {
                           tempImage == null ? Icon(tempIcon, size: 40) : null,
                     ),
                     const SizedBox(height: 12),
-                    // デバイスから選択
                     ElevatedButton.icon(
                       onPressed: () async {
                         final XFile? image = await _picker.pickImage(
@@ -451,11 +365,9 @@ class _AccountScreenState extends State<AccountScreen> {
                         }
                       },
                       icon: const Icon(Icons.photo_library),
-                      label: const Text('デバイスから選択'),
+                      label: const Text('画像を選択'),
                     ),
                     const SizedBox(height: 12),
-                    const Text('またはプリセットから選択'),
-                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       children: _availableIcons.map((icon) {
@@ -463,7 +375,7 @@ class _AccountScreenState extends State<AccountScreen> {
                           onTap: () {
                             setState(() {
                               tempIcon = icon;
-                              tempImage = null; // プリセット選択時は画像をクリア
+                              tempImage = null;
                             });
                           },
                           child: Container(
@@ -502,12 +414,26 @@ class _AccountScreenState extends State<AccountScreen> {
                   child: const Text('キャンセル'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    this.setState(() {
+                  onPressed: () async {
+                    setState(() {
                       _accountName = tempName;
                       _selectedIcon = tempIcon;
                       _profileImage = tempImage;
                     });
+                    if (!kIsWeb) {
+                      try {
+                        await DatabaseHelper.instance.saveUser(
+                          name: _accountName,
+                          height: double.tryParse(_height),
+                          weight: double.tryParse(_weight),
+                          age: int.tryParse(_age),
+                          gender: _gender,
+                          trainingPreference: _trainingGoal,
+                        );
+                      } catch (_) {
+                        // アカウント名のみの保存エラーは無視
+                      }
+                    }
                     Navigator.of(context).pop();
                   },
                   child: const Text('保存'),
@@ -523,6 +449,7 @@ class _AccountScreenState extends State<AccountScreen> {
   void _showPhysicalInfoDialog() {
     String tempHeight = _height;
     String tempWeight = _weight;
+    String tempAge = _age;
     String tempGender = _gender;
 
     showDialog(
@@ -553,6 +480,16 @@ class _AccountScreenState extends State<AccountScreen> {
                 onChanged: (value) => tempWeight = value,
               ),
               const SizedBox(height: 12),
+              TextFormField(
+                initialValue: tempAge,
+                decoration: const InputDecoration(
+                  labelText: '年齢',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) => tempAge = value,
+              ),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: tempGender,
                 decoration: const InputDecoration(
@@ -566,7 +503,9 @@ class _AccountScreenState extends State<AccountScreen> {
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
-                  tempGender = newValue!;
+                  if (newValue != null) {
+                    tempGender = newValue;
+                  }
                 },
               ),
             ],
@@ -577,13 +516,34 @@ class _AccountScreenState extends State<AccountScreen> {
               child: const Text('キャンセル'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 setState(() {
                   _height = tempHeight;
                   _weight = tempWeight;
+                  _age = tempAge;
                   _gender = tempGender;
                 });
-                Navigator.of(context).pop();
+                if (!kIsWeb) {
+                  try {
+                    await DatabaseHelper.instance.saveUser(
+                      name: _accountName,
+                      height: double.tryParse(tempHeight),
+                      weight: double.tryParse(tempWeight),
+                      age: int.tryParse(tempAge),
+                      gender: tempGender,
+                      trainingPreference: _trainingGoal,
+                    );
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('保存に失敗: $e')),
+                      );
+                    }
+                  }
+                }
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
               },
               child: const Text('保存'),
             ),
@@ -594,292 +554,84 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   void _showTrainingGoalDialog() {
-    String tempGoal = _trainingGoal;
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('トレーニング志向編集'),
-          content: DropdownButtonFormField<String>(
-            value: tempGoal,
-            decoration: const InputDecoration(
-              labelText: 'トレーニングの方向性',
-              border: OutlineInputBorder(),
-            ),
-            items: _trainingGoals.map((String goal) {
-              return DropdownMenuItem<String>(
-                value: goal,
-                child: Text(goal),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
-              tempGoal = newValue!;
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _trainingGoal = tempGoal;
-                });
-                Navigator.of(context).pop();
-              },
-              child: const Text('保存'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showPurchaseLogDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('購入ログ管理'),
-          content: SizedBox(
-            width: double.maxFinite,
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _addPurchaseLog();
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('食材を追加'),
-                ),
-                const SizedBox(height: 16),
-                if (_purchaseLogs.isNotEmpty) ...[
-                  const Text('現在の購入ログ:'),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _purchaseLogs.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(_purchaseLogs[index]),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () {
-                              setState(() {
-                                _purchaseLogs.removeAt(index);
-                              });
-                              Navigator.of(context).pop();
-                              _showPurchaseLogDialog();
-                            },
-                          ),
+              children: _trainingGoals.map((goal) {
+                return ListTile(
+                  title: Text(goal),
+                  trailing:
+                      _trainingGoal == goal ? const Icon(Icons.check) : null,
+                  onTap: () async {
+                    setState(() {
+                      _trainingGoal = goal;
+                    });
+                    if (!kIsWeb) {
+                      try {
+                        await DatabaseHelper.instance.saveUser(
+                          name: _accountName,
+                          height: double.tryParse(_height),
+                          weight: double.tryParse(_weight),
+                          age: int.tryParse(_age),
+                          gender: _gender,
+                          trainingPreference: goal,
                         );
-                      },
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('閉じる'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _addPurchaseLog() {
-    String newItem = '';
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('購入食材を追加'),
-          content: TextField(
-            decoration: const InputDecoration(
-              labelText: '食材名',
-              hintText: '例: 鶏胸肉 500g',
-            ),
-            onChanged: (value) => newItem = value,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (newItem.isNotEmpty) {
-                  setState(() {
-                    _purchaseLogs.add(newItem);
-                  });
-                }
-                Navigator.of(context).pop();
-              },
-              child: const Text('追加'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildThemeSetting() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'テーマ設定',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Icon(
-                  Icons.brightness_6,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            RadioListTile<ThemeMode>(
-              value: ThemeMode.light,
-              groupValue: widget.currentThemeMode,
-              title: const Text('ライトモード'),
-              onChanged: widget.onThemeModeChanged == null
-                  ? null
-                  : (value) {
-                      if (value != null) {
-                        widget.onThemeModeChanged!(value);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('保存に失敗: $e')),
+                          );
+                        }
                       }
-                    },
-              activeColor: Theme.of(context).colorScheme.primary,
-              contentPadding: EdgeInsets.zero,
-            ),
-            RadioListTile<ThemeMode>(
-              value: ThemeMode.dark,
-              groupValue: widget.currentThemeMode,
-              title: const Text('ダークモード'),
-              onChanged: widget.onThemeModeChanged == null
-                  ? null
-                  : (value) {
-                      if (value != null) {
-                        widget.onThemeModeChanged!(value);
-                      }
-                    },
-              activeColor: Theme.of(context).colorScheme.primary,
-              contentPadding: EdgeInsets.zero,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegalSupportSection() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          ListTile(
-            title: const Text('利用規約'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showTermsDialog,
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: const Text('プライバシーポリシー'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showPrivacyDialog,
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: const Text('お問い合わせ'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showContactDialog,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTermsDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('利用規約'),
-          content: const SingleChildScrollView(
-            child: Text(
-              'MuscleRecipeの利用にあたっては、利用規約に同意していただく必要があります。\n\n'
-              '本アプリは参考情報を提供するものであり、医療行為や専門的なアドバイスを置き換えるものではありません。\n\n'
-              'ご利用者は自己責任のもと本アプリを使用してください。',
+                    }
+                    Navigator.of(context).pop();
+                  },
+                );
+              }).toList(),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('閉じる'),
-            ),
-          ],
         );
       },
     );
   }
 
-  void _showPrivacyDialog() {
+  void _showThemeDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('プライバシーポリシー'),
-          content: const SingleChildScrollView(
-            child: Text(
-              'お客様のプライバシーは大切です。本アプリでは、個人情報を外部に提供せず、'
-              '端末内に保存されたデータを適切に扱います。\n\n'
-              '詳細な収集・利用方法については今後のバージョンで公開します。',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('閉じる'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showContactDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('お問い合わせ'),
-          content: const SingleChildScrollView(
-            child: Text(
-              'ご質問やご意見は次のメールアドレスまでお寄せください。\n\n'
-              'support@musclerecipe.example.com\n\n'
-              '今後、アプリ内お問い合わせフォームを実装予定です。',
-            ),
+          title: const Text('テーマ設定'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<ThemeMode>(
+                value: ThemeMode.light,
+                groupValue: widget.currentThemeMode,
+                title: const Text('ライトモード'),
+                onChanged: (value) {
+                  if (value != null) {
+                    widget.onThemeModeChanged?.call(value);
+                    Navigator.of(context).pop();
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                value: ThemeMode.dark,
+                groupValue: widget.currentThemeMode,
+                title: const Text('ダークモード'),
+                onChanged: (value) {
+                  if (value != null) {
+                    widget.onThemeModeChanged?.call(value);
+                    Navigator.of(context).pop();
+                  }
+                },
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -898,7 +650,7 @@ class _AccountScreenState extends State<AccountScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('ログアウト'),
-          content: const Text('ログアウトしますか？'),
+          content: const Text('本当にログアウトしますか？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -906,18 +658,14 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                // ログアウト処理
                 Navigator.of(context).pop();
                 widget.onLogout?.call();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('ログアウトしました')),
-                );
               },
-              child: const Text('ログアウト'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
+              child: const Text('ログアウト'),
             ),
           ],
         );
