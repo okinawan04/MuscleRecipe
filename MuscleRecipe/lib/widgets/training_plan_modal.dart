@@ -249,8 +249,8 @@ final Map<String, TrainingPlan> trainingPlans = {
 
 class TrainingPlanModal {
   // モーダルを表示するための静的メソッド
-  static void show(BuildContext context) {
-    showModalBottomSheet(
+  static Future<void> show(BuildContext context) {
+    return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

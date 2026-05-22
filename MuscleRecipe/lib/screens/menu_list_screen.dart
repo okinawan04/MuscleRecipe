@@ -43,6 +43,10 @@ class _MenuListScreenState extends State<MenuListScreen> {
   Future<void> _initialize() async {
     final planAdded = await _addPlanMenusIfProvided();
     await _loadTrainingRecords();
+    setState(() {
+      _isLoading = false;
+    });
+    
     if (planAdded && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('トレーニングプランを追加しました')),
@@ -152,12 +156,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
                     children: [
                       GestureDetector(
                         onTap: () {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) => const HomePage(),
-                            ),
-                            (route) => false,
-                          );
+                          Navigator.of(context).pop();
                         } ,
                         child: const Icon(
                           Icons.chevron_left,
@@ -289,8 +288,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceBetween,
+                                              crossAxisAlignment: CrossAxisAlignment.center,
                                               children: [
                                                 Text(
                                                   'Set ${set['set_number']}',
@@ -299,12 +297,26 @@ class _MenuListScreenState extends State<MenuListScreen> {
                                                     fontSize: 12,
                                                   ),
                                                 ),
+                                                const Spacer(),
                                                 Text(
                                                   '${set['weight']}kg × ${set['reps']}',
                                                   style: const TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
+                                                const SizedBox(width: 8),
+                                                Builder(builder: (context) {
+                                                  final weight = (set['weight'] as num?)?.toDouble() ?? 0.0;
+                                                  final reps = set['reps'] as int? ?? 0;
+                                                  final rm = weight * reps / 40 + weight;
+                                                  return Text(
+                                                    'RM: ${rm.isFinite ? rm.toStringAsFixed(1) : '0.0'}',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: AppColors.primaryColor,
+                                                    ),
+                                                  );
+                                                }),
                                               ],
                                             ),
                                             if (set['memo'] != null &&
@@ -357,14 +369,14 @@ class _MenuListScreenState extends State<MenuListScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primaryColor,
         onPressed: () async {
-          final result = await Navigator.push(
+          final result = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
               builder: (context) => ExerciseSelectionScreen(selectedDate: _selectedDate),
             ),
           );
 
-          if (result == true && mounted) {
+          if (mounted) {
             // リロード
             await _loadTrainingRecords();
           }
@@ -392,7 +404,11 @@ class _MenuListScreenState extends State<MenuListScreen> {
   double _getTotalWeight() {
     return _trainingRecords.fold(
       0.0,
-      (sum, record) => sum + ((record['weight'] as num).toDouble()),
+      (sum, record) {
+        final weight = (record['weight'] as num).toDouble();
+        final reps = record['reps'] as int;
+        return sum + (weight * reps);
+      }
     );
   }
 

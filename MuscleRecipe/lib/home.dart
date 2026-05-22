@@ -1,5 +1,4 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +23,38 @@ class _HomePageState extends State<HomePage> {
   bool _showCalendar = true;
   DateTime _selectedDate = DateTime.now();
   late DateTime _displayedMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+  Set<int> _trainingDays = {};
   BodyPart? _selectedBodyPart = BodyPart.values.first; // グラフで選択された部位
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrainingDaysForDisplayedMonth();
+  }
+
+  Future<void> _loadTrainingDaysForDisplayedMonth() async {
+    final startDate = DateTime(_displayedMonth.year, _displayedMonth.month, 1);
+    final endDate = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 0);
+    final records = await DatabaseHelper.instance.getTrainingRecordsByDateRange(startDate, endDate);
+
+    final days = <int>{};
+    for (final record in records) {
+      final trainingDate = record['training_date'] as String?;
+      if (trainingDate == null) continue;
+      final dateString = trainingDate.split('T').first;
+      final parts = dateString.split('-');
+      if (parts.length == 3) {
+        final day = int.tryParse(parts[2]);
+        if (day != null) {
+          days.add(day);
+        }
+      }
+    }
+
+    setState(() {
+      _trainingDays = days;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,15 +127,17 @@ class _HomePageState extends State<HomePage> {
                         MaterialPageRoute(
                           builder: (context) => MenuListScreen(selectedDate: _selectedDate),
                         ),
-                      );
+                      ).then((_) => _loadTrainingDaysForDisplayedMonth());
                     },
                   ),
                   const SizedBox(height: 12),
                   // Training Plan Button
                   CustomElevatedButton(
                     label: 'トレーニングプラン',
-                    onPressed: () {
-                      TrainingPlanModal.show(context);
+                    onPressed: () async {
+                      await TrainingPlanModal.show(context);
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      _loadTrainingDaysForDisplayedMonth();
                     },
                   ),
                 ],
@@ -391,6 +423,7 @@ class _HomePageState extends State<HomePage> {
                       _displayedMonth.month - 1,
                     );
                   });
+                  _loadTrainingDaysForDisplayedMonth();
                 },
               ),
               GestureDetector(
@@ -411,6 +444,7 @@ class _HomePageState extends State<HomePage> {
                       _displayedMonth.month + 1,
                     );
                   });
+                  _loadTrainingDaysForDisplayedMonth();
                 },
               ),
             ],
@@ -478,6 +512,8 @@ class _HomePageState extends State<HomePage> {
           return Container();
         }
 
+        final now = DateTime.now();
+        final isToday = day == now.day && month == now.month && year == now.year;
         final isSelected = day == _selectedDate.day && 
                           _selectedDate.month == month && 
                           _selectedDate.year == year;
@@ -485,24 +521,48 @@ class _HomePageState extends State<HomePage> {
         return GestureDetector(
           onTap: () {
             final selectedDate = DateTime(year, month, day);
+            setState(() {
+              _selectedDate = selectedDate;
+            });
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => MenuListScreen(selectedDate: selectedDate),
               ),
-            );
+            ).then((_) => _loadTrainingDaysForDisplayedMonth());
           },
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected
+              color: isToday
                   ? AppColors.accentColor
                   : Colors.transparent,
+              border: isToday
+                  ? Border.all(
+                      color: AppColors.accentColor,
+                      width: 2,
+                    )
+                  : null,
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: Text(
-              day.toString(),
-              style: AppTextStyles.calendarDay,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  day.toString(),
+                  style: AppTextStyles.calendarDay,
+                ),
+                const SizedBox(height: 6),
+                if (_trainingDays.contains(day))
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                  ),
+              ],
             ),
           ),
         );
@@ -511,74 +571,120 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showMonthYearPicker(BuildContext context) {
+    int selectedYear = _displayedMonth.year;
+    int selectedMonth = _displayedMonth.month;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundColor,
-        title: Text(
-          '年月を選択',
-          style: AppTextStyles.pageTitle,
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 年の選択
-              Text(
-                '年: ${_displayedMonth.year}',
-                style: AppTextStyles.buttonText,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return AlertDialog(
+              backgroundColor: AppColors.backgroundColor,
+              title: Text(
+                '年月を選択',
+                style: AppTextStyles.pageTitle,
               ),
-              Slider(
-                value: _displayedMonth.year.toDouble(),
-                min: 2020,
-                max: 2030,
-                divisions: 10,
-                onChanged: (value) {
-                  // Sliderで年を選択
-                },
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 年の選択
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '年',
+                        style: AppTextStyles.buttonText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButton<int>(
+                      value: selectedYear,
+                      isExpanded: true,
+                      items: List.generate(
+                        11,
+                        (index) {
+                          final year = 2020 + index;
+                          return DropdownMenuItem(
+                            value: year,
+                            child: Text('$year年'),
+                          );
+                        },
+                      ),
+                      onChanged: (value) {
+                        if (value != null) {
+                          dialogSetState(() {
+                            selectedYear = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    // 月の選択
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '月',
+                        style: AppTextStyles.buttonText,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButton<int>(
+                      value: selectedMonth,
+                      isExpanded: true,
+                      items: List.generate(
+                        12,
+                        (index) {
+                          final month = index + 1;
+                          return DropdownMenuItem(
+                            value: month,
+                            child: Text('$month月'),
+                          );
+                        },
+                      ),
+                      onChanged: (value) {
+                        if (value != null) {
+                          dialogSetState(() {
+                            selectedMonth = value;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 20),
-              // 月の選択
-              Text(
-                '月: ${_displayedMonth.month}',
-                style: AppTextStyles.buttonText,
-              ),
-              Slider(
-                value: _displayedMonth.month.toDouble(),
-                min: 1,
-                max: 12,
-                divisions: 11,
-                onChanged: (value) {
-                  // Sliderで月を選択
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'キャンセル',
-              style: AppTextStyles.buttonText.copyWith(
-                color: AppColors.primaryColor,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text(
-              '決定',
-              style: AppTextStyles.buttonText.copyWith(
-                color: AppColors.primaryColor,
-              ),
-            ),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'キャンセル',
+                    style: AppTextStyles.buttonText.copyWith(
+                      color: AppColors.primaryColor,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _displayedMonth = DateTime(selectedYear, selectedMonth, 1);
+                    });
+                    _loadTrainingDaysForDisplayedMonth();
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    '決定',
+                    style: AppTextStyles.buttonText.copyWith(
+                      color: AppColors.primaryColor,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
+

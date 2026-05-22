@@ -242,9 +242,9 @@ Future<void> _loadExercises() async {
 
   Widget _buildExerciseItem(Exercise exercise) {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         // Navigate to MenuCreationScreen with the selected exercise
-        Navigator.pushReplacement(
+        final result = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
             builder: (context) => MenuCreationScreen(
@@ -253,6 +253,11 @@ Future<void> _loadExercises() async {
             ),
           ),
         );
+
+        if(result == true && mounted) {
+          // If the menu was created successfully, pop back to the previous screen
+          Navigator.pop(context, true);
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),

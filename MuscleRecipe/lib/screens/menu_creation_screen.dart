@@ -478,7 +478,9 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     final reps = int.tryParse(value) ?? 0;
-                    sets[setIndex] = sets[setIndex].copyWith(reps: reps);
+                    setState(() {
+                      sets[setIndex] = sets[setIndex].copyWith(reps: reps);
+                    });
                   },
                   decoration: InputDecoration(
                     hintText: '回',
@@ -494,6 +496,30 @@ class _MenuCreationScreenState extends State<MenuCreationScreen> {
               ),
               const SizedBox(width: 8),
               const Text('回', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 12),
+              // RM表示
+              Builder(
+                builder: (context) {
+                  final weight = double.tryParse(_weightControllers[setIndex].text) ?? 0.0;
+                  final reps = int.tryParse(_repControllers[setIndex].text) ?? 0;
+                  final rm = weight * reps / 40 + weight;
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                          const Text('RM:', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(height: 2),
+                      Text(
+                        rm.isFinite ? rm.toStringAsFixed(1) : '0.0',
+                        style: const TextStyle(
+                          color: AppColors.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 12),
