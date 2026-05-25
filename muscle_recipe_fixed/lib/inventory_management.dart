@@ -121,6 +121,7 @@ class _MyHomePageState extends State<MyHomePage> {
           id: ingredientId,
           name: e['name'],
           quantity: quantity,
+          originalQuantity: quantity,
           isNearExpire: vegetableNearExpire,
         ),
       );
@@ -144,6 +145,7 @@ class _MyHomePageState extends State<MyHomePage> {
           id: ingredientId,
           name: e['name'],
           quantity: quantity,
+          originalQuantity: quantity,
           isNearExpire: meatNearExpire,
         ),
       );
@@ -167,6 +169,7 @@ class _MyHomePageState extends State<MyHomePage> {
           id: ingredientId,
           name: e['name'],
           quantity: quantity,
+          originalQuantity: quantity,
           isNearExpire: fishNearExpire,
         ),
       );
@@ -190,6 +193,7 @@ class _MyHomePageState extends State<MyHomePage> {
           id: ingredientId,
           name: e['name'],
           quantity: quantity,
+          originalQuantity: quantity,
           isNearExpire: dairyNearExpire,
         ),
       );
@@ -216,6 +220,51 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       foods = result;
     });
+  }
+
+  Future<void> saveEditedQuantities() async {
+    final today = DateTime.now().toString().split(' ')[0];
+
+    for (final category in categories) {
+      for (final item in category.items) {
+        final difference = item.quantity - item.originalQuantity;
+
+        if (difference == 0) {
+          continue;
+        }
+
+        if (difference > 0) {
+          await DatabaseHelper.instance.insertFood(
+            ingredientId: item.id,
+            quantity: difference,
+            unit: '個',
+            purchaseDate: today,
+            expireDate: DateTime.now()
+                .add(const Duration(days: 7))
+                .toString()
+                .split(' ')[0],
+          );
+        } else {
+          final oldestFood = await DatabaseHelper.instance.getOldestFoodRecord(
+            item.id,
+          );
+
+          final expireDate = oldestFood != null
+              ? oldestFood['expire_date'].toString()
+              : today;
+
+          await DatabaseHelper.instance.insertFood(
+            ingredientId: item.id,
+            quantity: difference,
+            unit: '個',
+            purchaseDate: today,
+            expireDate: expireDate,
+          );
+        }
+
+        item.originalQuantity = item.quantity;
+      }
+    }
   }
 
   @override
@@ -382,7 +431,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         borderRadius: BorderRadius.circular(8),
                         splashColor: Colors.grey.withValues(alpha: 0.2),
                         highlightColor: Colors.grey.withValues(alpha: 0.1),
-                        onTap: () {
+                        onTap: () async {
+                          await saveEditedQuantities();
+
                           setState(() {
                             sortAllCategoryItems();
                             isEditMode = false;
@@ -439,14 +490,16 @@ class FoodItem {
   final int id;
   final String name;
   int quantity;
+  int originalQuantity;
   bool isNearExpire;
 
   FoodItem({
     required this.id,
     required this.name,
     this.quantity = 0,
+    int? originalQuantity,
     this.isNearExpire = false,
-  });
+  }) : originalQuantity = originalQuantity ?? quantity;
 }
 
 class FoodCategoryWidget extends StatefulWidget {
@@ -624,7 +677,7 @@ class _FoodCategoryWidgetState extends State<FoodCategoryWidget> {
                         child: Text(
                           item.name,
                           style: TextStyle(
-                            color: item.isNearExpire
+                            color: item.quantity > 0 && item.isNearExpire
                                 ? Colors.red
                                 : Colors.white,
                             fontSize: 14,
@@ -636,7 +689,7 @@ class _FoodCategoryWidgetState extends State<FoodCategoryWidget> {
                                 : TextDecoration.none,
 
                             // 下線の色を文字色と同じにする
-                            decorationColor: item.isNearExpire
+                            decorationColor: item.quantity > 0 && item.isNearExpire
                                 ? Colors.red
                                 : Colors.white,
 
@@ -665,33 +718,9 @@ class _FoodCategoryWidgetState extends State<FoodCategoryWidget> {
                                 setState(() {
                                   item.quantity--;
                                 });
+                                widget.onChanged();
 
                                 // ingredientId はここで1回だけ取得する
-                                final ingredientId = await DatabaseHelper
-                                    .instance
-                                    .getIngredientIdByName(item.name);
-
-                                // 消費対象になる一番古い在庫を取得する
-                                final oldestFood = await DatabaseHelper.instance
-                                    .getOldestFoodRecord(ingredientId!);
-
-                                // 消費日は今日
-                                final today = DateTime.now().toString().split(
-                                  ' ',
-                                )[0];
-
-                                // 賞味期限は、消費対象の在庫の賞味期限を使う
-                                final expireDate = oldestFood != null
-                                    ? oldestFood['expire_date'].toString()
-                                    : today;
-
-                                await DatabaseHelper.instance.insertFood(
-                                  ingredientId: ingredientId,
-                                  quantity: -1,
-                                  unit: '個',
-                                  purchaseDate: today, // 消費日として表示される日付
-                                  expireDate: expireDate, // 元の在庫の賞味期限
-                                );
 
                                 widget.onChanged();
                               }
@@ -725,22 +754,7 @@ class _FoodCategoryWidgetState extends State<FoodCategoryWidget> {
                               setState(() {
                                 item.quantity++;
                               });
-
-                              final ingredientId = await DatabaseHelper.instance
-                                  .getIngredientIdByName(item.name);
-
-                              await DatabaseHelper.instance.insertFood(
-                                ingredientId: ingredientId!,
-                                quantity: 1,
-                                unit: '個',
-                                purchaseDate: DateTime.now().toString().split(
-                                  ' ',
-                                )[0],
-                                expireDate: DateTime.now()
-                                    .add(const Duration(days: 7))
-                                    .toString()
-                                    .split(' ')[0],
-                              );
+                              widget.onChanged();
 
                               widget.onChanged();
                             },

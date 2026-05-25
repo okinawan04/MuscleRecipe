@@ -1303,31 +1303,28 @@ class DatabaseHelper {
   }
 
   // 賞味期限が近いか確認
-  Future<bool> isNearExpire(int ingredientId) async {
-    final db = await database;
+  // 賞味期限が近い、または切れて3日以内か確認
+Future<bool> isNearExpire(int ingredientId) async {
+  final db = await database;
 
-    final result = await db.query(
-      'foods',
-      where: 'ingredient_id = ?',
-      whereArgs: [ingredientId],
-    );
+  final result = await db.rawQuery(
+    '''
+    SELECT
+      expire_date,
+      SUM(quantity) as remaining_quantity
+    FROM foods
+    WHERE ingredient_id = ?
+    GROUP BY expire_date
+    HAVING SUM(quantity) > 0
+      AND date(expire_date) <= date('now', '+3 days')
+      AND date(expire_date) >= date('now', '-3 days')
+    LIMIT 1
+    ''',
+    [ingredientId],
+  );
 
-    if (result.isEmpty) {
-      return false;
-    }
-
-    for (final food in result) {
-      final expireDate = DateTime.parse(food['expire_date'] as String);
-
-      final difference = expireDate.difference(DateTime.now()).inDays;
-
-      if (difference <= 3) {
-        return true;
-      }
-    }
-
-    return false;
-  }
+  return result.isNotEmpty;
+}
 
   Future close() async {
     final db = await instance.database;
