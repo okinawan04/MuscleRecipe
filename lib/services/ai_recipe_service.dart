@@ -1,8 +1,9 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 
-import 'models/recipe.dart';
-import 'data/database_helper.dart';
+import '../models/recipe.dart';
+import '../data/database_helper.dart';
 
 /// Gemini API を使用してAIレシピを生成するサービス
 /// 
@@ -16,9 +17,6 @@ class AiRecipeService {
   late final GenerativeModel _model;
   final DatabaseHelper _db = DatabaseHelper.instance;
 
-  // APIキー（環境変数から読み込む）
-  static const String _apiKeyEnvName = 'GEMINI_API_KEY';
-
   AiRecipeService._init() {
     _initializeModel();
   }
@@ -29,14 +27,17 @@ class AiRecipeService {
 
   /// GenerativeModel を初期化
   /// 
-  /// ⚠️ APIキーは環境変数から読み込んでください
-  /// .env ファイルに: GEMINI_API_KEY=your_api_key
+  /// ⚠️ APIキーは .env ファイルの GEMINI_API_KEY から読み込みます
   void _initializeModel() {
-    // 実装時は flutter_dotenv で環境変数を読み込む
-    // const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+    // flutter_dotenv から環境変数を読み込む
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
     
-    // または、ここで直接設定（セキュリティ上は推奨しない）
-    const apiKey = 'AIzaSyA70tJV1jw9MfQ21S61PbdBD1xdzei0MeY'; // 本番では環境変数から読み込む
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception(
+        'GEMINI_API_KEY が .env ファイルに設定されていません。'
+        '.env ファイルを確認してください。',
+      );
+    }
     
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',

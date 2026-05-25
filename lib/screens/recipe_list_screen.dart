@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/recipe.dart';
 import '../data/recipe_data.dart';
+import '../services/ai_recipe_service.dart';
 import 'recipe_detail_screen.dart';
 
 class RecipeListScreen extends StatefulWidget {
@@ -14,6 +15,11 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<String> _selectedGenres = [];
   String _searchQuery = '';
+  
+  // 🤖 AI生成レシピの状態管理
+  bool _isLoading = false;
+  List<Recipe> _aiRecipes = [];
+  bool _showAiRecipes = false;
 
   // ジャンルのリスト
   final List<String> _genres = ['すべて', '肉料理', '魚料理', '揚げ物', '飲み物', 'サラダ'];
@@ -134,6 +140,49 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
     return _selectedGenres.contains(genre);
   }
 
+  /// 🤖 AI生成レシピボタンを押したときの処理
+  Future<void> _generateAiRecipes() async {
+    setState(() {
+      _isLoading = true;
+      _showAiRecipes = true;
+    });
+
+    try {
+      final aiService = AiRecipeService();
+      final recipes = await aiService.generateRecipesFromInventory(
+        userPreferences: '高タンパク質・低脂肪',
+      );
+
+      if (mounted) {
+        setState(() {
+          _aiRecipes = recipes;
+          _isLoading = false;
+        });
+
+        if (recipes.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('レシピを生成できませんでした。冷蔵庫に食材を追加してください。'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('エラーが発生しました: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,100 +197,248 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // 検索バー
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: '料理名または材料名で検索',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
-          ),
+      body: _showAiRecipes ? _buildAiRecipesView() : _buildNormalRecipesView(),
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
 
-          // ジャンルソート（スクロール可能）
-          SizedBox(
-            height: 56,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _genres.length,
-              itemBuilder: (context, index) {
-                final genre = _genres[index];
-                final isSelected = _isGenreSelected(genre);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(
-                      genre,
+  /// 通常のレシピ一覧表示
+  Widget _buildNormalRecipesView() {
+    return Column(
+      children: [
+        // 検索バー
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: '料理名または材料名で検索',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+          ),
+        ),
+
+        // ジャンルソート（スクロール可能）
+        SizedBox(
+          height: 56,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _genres.length,
+            itemBuilder: (context, index) {
+              final genre = _genres[index];
+              final isSelected = _isGenreSelected(genre);
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(
+                    genre,
+                    style: const TextStyle(
+                      fontSize: 14,
+                    ),
+                  ),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    _onGenreSelected(genre);
+                  },
+                  selectedColor: Colors.green[200],
+                  checkmarkColor: Colors.green[800],
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // レシピリスト
+        Expanded(
+          child: filteredRecipes.isEmpty
+              ? const Center(
+                  child: Text(
+                    '該当するレシピがありません',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: filteredRecipes.length,
+                  itemBuilder: (context, index) {
+                    final recipe = filteredRecipes[index];
+                    return _RecipeCard(
+                      recipe: recipe,
+                      searchQuery: _searchQuery,
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  /// 🤖 AI生成レシピ表示ビュー
+  Widget _buildAiRecipesView() {
+    return Column(
+      children: [
+        // ヘッダー
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.green[50],
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.amber),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'AI提案レシピ',
                       style: TextStyle(
-                        // 文字が切れないように
-                        fontSize: 14,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
                       ),
                     ),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      _onGenreSelected(genre);
-                    },
-                    selectedColor: Colors.green[200],
-                    checkmarkColor: Colors.green[800],
-                    // チップの最小幅を設定して文字を完整显示
-                    materialTapTargetSize: MaterialTapTargetSize.padded,
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // レシピリスト
-          Expanded(
-            child: filteredRecipes.isEmpty
-                ? const Center(
-                    child: Text(
-                      '該当するレシピがありません',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    const SizedBox(height: 4),
+                    Text(
+                      '冷蔵庫の食材から作れるレシピをAIが提案しました',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[700],
+                      ),
                     ),
-                  )
-                : ListView.builder(
-                    itemCount: filteredRecipes.length,
-                    itemBuilder: (context, index) {
-                      final recipe = filteredRecipes[index];
-                      return _RecipeCard(
-                        recipe: recipe,
-                        searchQuery: _searchQuery,
-                      );
-                    },
-                  ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  setState(() {
+                    _showAiRecipes = false;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+
+        // ローディングまたはレシピ表示
+        Expanded(
+          child: _isLoading
+              ? _buildLoadingState()
+              : _aiRecipes.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      itemCount: _aiRecipes.length,
+                      itemBuilder: (context, index) {
+                        final recipe = _aiRecipes[index];
+                        return _RecipeCard(
+                          recipe: recipe,
+                          searchQuery: '',
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  /// ローディング状態の UI
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(
+            'AIがレシピを生成中...',
+            style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'これには数秒かかることがあります',
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
           ),
         ],
       ),
     );
+  }
+
+  /// 空状態の UI
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.sentiment_dissatisfied, size: 48, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'レシピを生成できませんでした',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '冷蔵庫に食材を追加してから試してください',
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _showAiRecipes = false;
+              });
+            },
+            child: const Text('戻る'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// FAB の構築
+  Widget _buildFloatingActionButton() {
+    if (_showAiRecipes) {
+      return FloatingActionButton.extended(
+        onPressed: () {
+          setState(() {
+            _showAiRecipes = false;
+          });
+        },
+        label: const Text('通常表示に戻す'),
+        icon: const Icon(Icons.restaurant_menu),
+        backgroundColor: Colors.green,
+      );
+    } else {
+      return FloatingActionButton.extended(
+        onPressed: _isLoading ? null : _generateAiRecipes,
+        label: const Text('AI提案を見る'),
+        icon: const Icon(Icons.auto_awesome),
+        backgroundColor: _isLoading ? Colors.grey : Colors.amber,
+      );
+    }
   }
 }
 
