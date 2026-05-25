@@ -303,9 +303,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     category: categories[index],
                     isEditMode: isEditMode,
                     onChanged: () {
-                      setState(() {
-                        sortAllCategoryItems();
-                      });
+                      setState(() {});
                     },
                   );
                 },
@@ -386,6 +384,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         highlightColor: Colors.grey.withValues(alpha: 0.1),
                         onTap: () {
                           setState(() {
+                            sortAllCategoryItems();
                             isEditMode = false;
                           });
                         },
