@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'inventory_management.dart';
+import 'details_screen.dart';
+import 'database_helper.dart';
 
 void main() {
   runApp(const MyApp());
