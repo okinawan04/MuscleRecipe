@@ -19,7 +19,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    await deleteDatabase(path);
+    //await deleteDatabase(path);
 
     return await openDatabase(
       path,
