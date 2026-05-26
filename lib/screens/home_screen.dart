@@ -157,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisCount: 7,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 0.9,
               children: _buildCalendarDays(),
             ),
             _buildDiarySection(),
@@ -387,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
           child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 6),
+            margin: const EdgeInsets.symmetric(vertical: 2),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -398,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           shape: BoxShape.circle,
                         )
                       : null,
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   child: Text(
                     '$i',
                     style: TextStyle(
@@ -489,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
         child: Row(
           children: [
             Container(
