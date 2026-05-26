@@ -1,5 +1,6 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'providers/training_data_provider.dart';
 
 class DatabaseHelper {
   // シングルトンパターンの設定
@@ -20,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 1,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -48,7 +49,6 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE users (
         id $idType,
-        name $textType,
         height REAL,
         weight $realType,
         age $intType,
@@ -130,7 +130,7 @@ class DatabaseHelper {
       CREATE TABLE training_menus (
         id $idType,
         category $textType,
-        name $textType,
+        name $textType UNIQUE,
         is_active $boolType DEFAULT 1,
         created_at $textType,
         updated_at $textType
@@ -154,6 +154,10 @@ class DatabaseHelper {
         FOREIGN KEY (menu_id) REFERENCES training_menus (id)
       )
     ''');
+  
+
+  // 初期種目データをtraining_menusに登録
+    await _seedInitialExercises(db);
   }
 
   Future<int> insert(String table, Map<String, Object?> values) async {
@@ -307,6 +311,167 @@ class DatabaseHelper {
         'updated_at': now,
       });
     }
+  }
+
+  /// training_menusテーブルに初期種目データを登録
+  Future _seedInitialExercises(Database db) async {
+    final exercises = TrainingDataProvider.getInitialExercises();
+    final now = DateTime.now().toIso8601String();
+
+    for (final exercise in exercises) {
+      await db.insert(
+        'training_menus',
+        {
+          'category': exercise.bodyPart.displayName,
+          'name': exercise.name,
+          'is_active': 1,
+          'created_at': now,
+          'updated_at': now,
+        },
+      );
+    }
+  }
+
+  /// 新しい種目をtraining_menusテーブルに追加（既存の場合は既存IDを返す）
+  Future<int> insertExercise({
+    required String category,
+    required String name,
+  }) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    // 既存の種目があるかチェック
+    final existingExercises = await db.query(
+      'training_menus',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
+
+    if (existingExercises.isNotEmpty) {
+      // 既存の種目があれば、そのIDを返す
+      return existingExercises.first['id'] as int;
+    }
+
+    // 新規作成
+    return await db.insert(
+      'training_menus',
+      {
+        'category': category,
+        'name': name,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getExercises() async {
+  final db = await instance.database;
+  // training_menusテーブルから全てのデータを取得
+  return await db.query('training_menus');
+}
+
+  /// トレーニング記録を training_records テーブルに保存
+  Future<int> insertTrainingRecord({
+    required int menuId,
+    required String trainingDate,
+    required int setNumber,
+    required double weight,
+    required int reps,
+    int? restSeconds,
+    String? memo,
+  }) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    return await db.insert(
+      'training_records',
+      {
+        'menu_id': menuId,
+        'training_date': trainingDate,
+        'set_number': setNumber,
+        'weight': weight,
+        'reps': reps,
+        'rest_seconds': restSeconds ?? 60,
+        'is_completed': 0,
+        'memo': memo,
+        'created_at': now,
+        'updated_at': now,
+      },
+    );
+  }
+
+  /// 特定の日付のトレーニング記録を取得
+  Future<List<Map<String, dynamic>>> getTrainingRecordsByDate(DateTime date) async {
+    final db = await database;
+    final dateString = date.toIso8601String().split('T')[0];
+
+    return await db.rawQuery('''
+      SELECT 
+        tr.id,
+        tr.menu_id,
+        tr.training_date,
+        tr.set_number,
+        tr.weight,
+        tr.reps,
+        tr.rest_seconds,
+        tr.is_completed,
+        tr.memo,
+        tm.name,
+        tm.category
+      FROM training_records tr
+      JOIN training_menus tm ON tr.menu_id = tm.id
+      WHERE tr.training_date LIKE ?
+      ORDER BY tr.id, tr.set_number
+    ''', ['$dateString%']);
+  }
+
+  /// 指定期間のトレーニング記録を取得
+  Future<List<Map<String, dynamic>>> getTrainingRecordsByDateRange(
+      DateTime startDate, DateTime endDate) async {
+    final db = await database;
+    final startDateString = startDate.toIso8601String().split('T')[0];
+    final endDateString = endDate.toIso8601String().split('T')[0];
+
+    return await db.rawQuery('''
+      SELECT 
+        tr.id,
+        tr.menu_id,
+        tr.training_date,
+        tr.set_number,
+        tr.weight,
+        tr.reps,
+        tr.rest_seconds,
+        tr.is_completed,
+        tr.memo,
+        tm.name,
+        tm.category
+      FROM training_records tr
+      JOIN training_menus tm ON tr.menu_id = tm.id
+      WHERE tr.training_date BETWEEN ? AND ?
+      ORDER BY tr.training_date, tr.set_number
+    ''', [startDateString, endDateString]);
+  }
+
+  /// 指定メニュー・日付のトレーニング記録を削除
+  Future<int> deleteTrainingRecordsByMenuIdAndDate(
+      int menuId, String trainingDate) async {
+    final db = await database;
+    return await db.delete(
+      'training_records',
+      where: 'menu_id = ? AND training_date LIKE ?',
+      whereArgs: [menuId, '$trainingDate%'],
+    );
+  }
+
+   /// トレーニング記録を削除
+  Future<int> deleteTrainingRecord(int recordId) async {
+    final db = await database;
+    return await db.delete(
+      'training_records',
+      where: 'id = ?',
+      whereArgs: [recordId],
+    );
   }
 
   Future close() async {

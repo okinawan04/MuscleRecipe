@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
-import 'database_helper.dart';
+//import 'database_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/training_screen.dart';
+//import 'screens/training_screen.dart';
 import 'screens/recipe_screen.dart';
 import 'screens/inventory_screen.dart';
 import 'screens/account_screen.dart';
+import 'home.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ja_JP');
   // Web環境ではsqfliteが動作しないため、モバイル・デスクトップのみでDB初期化
-  if (!kIsWeb) {
-    await DatabaseHelper.instance.ensureDefaultData();
-  }
+  //if (!kIsWeb) {
+    //await DatabaseHelper.instance.ensureDefaultData();
+  //}
   runApp(const MyApp());
 }
 
@@ -38,6 +43,16 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MuscleRecipe',
+      locale: const Locale('ja', 'JP'),
+      supportedLocales: const [
+        Locale('ja', 'JP'),
+        Locale('en', 'US'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
@@ -160,7 +175,7 @@ class _MainAppState extends State<MainApp> {
   Widget build(BuildContext context) {
     final screens = [
       const HomeScreen(),
-      const TrainingScreen(),
+      const HomePage(),
       const RecipeScreen(),
       const InventoryScreen(),
       AccountScreen(
