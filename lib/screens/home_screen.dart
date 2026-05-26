@@ -186,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: selectedRecipe,
+              initialValue: selectedRecipe,
               decoration: const InputDecoration(labelText: 'レシピ'),
               items: _recipeOptions
                   .map(
@@ -506,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    count == 1 ? title : '$title: ${count}件の通知',
+                    count == 1 ? title : '$title: $count件の通知',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,

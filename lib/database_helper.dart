@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -29,11 +29,25 @@ class DatabaseHelper {
 
   // データベースのアップグレード処理
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('ALTER TABLE users ADD COLUMN age INTEGER');
-    }
-    if (oldVersion < 3) {
-      await db.execute('ALTER TABLE users ADD COLUMN name TEXT');
+    // 既存DBでも安全に不足カラムだけ追加する
+    await _addColumnIfMissing(db, 'users', 'age', 'INTEGER');
+    await _addColumnIfMissing(db, 'users', 'name', 'TEXT');
+    await _addColumnIfMissing(db, 'ingredient_master', 'category', 'TEXT');
+  }
+
+  Future<void> _addColumnIfMissing(
+    Database db,
+    String tableName,
+    String columnName,
+    String columnDefinition,
+  ) async {
+    final columns = await db.rawQuery('PRAGMA table_info($tableName)');
+    final exists = columns.any((column) => column['name'] == columnName);
+
+    if (!exists) {
+      await db.execute(
+        'ALTER TABLE $tableName ADD COLUMN $columnName $columnDefinition',
+      );
     }
   }
 
@@ -49,6 +63,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE users (
         id $idType,
+        name TEXT,
         height REAL,
         weight $realType,
         age $intType,
@@ -63,6 +78,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE ingredient_master (
         id $idType,
+        category TEXT,
         name $textType,
         base_unit $textType,
         calorie $intType,
@@ -263,6 +279,7 @@ class DatabaseHelper {
         0;
     if (ingredientCount == 0) {
       await db.insert('ingredient_master', {
+        'category': '肉',
         'name': '鶏むね肉',
         'base_unit': 'g',
         'calorie': 165,
@@ -471,6 +488,1082 @@ class DatabaseHelper {
       'training_records',
       where: 'id = ?',
       whereArgs: [recordId],
+    );
+  }
+
+    Future<void> insertDefaultIngredients() async {
+    final db = await instance.database;
+    final now = DateTime.now().toIso8601String();
+
+    final defaultIngredients = [
+      // 野菜
+       {
+        'category': '野菜',
+        'name': '人参',
+        'base_unit': '個',
+        'calorie': 37,
+        'protein': 0.6,
+        'fat': 0.1,
+        'carbohydrate': 9.6,
+      },
+      {
+        'category': '野菜',
+        'name': '玉ねぎ',
+        'base_unit': '個',
+        'calorie': 37,
+        'protein': 1.0,
+        'fat': 0.1,
+        'carbohydrate': 8.8,
+      },
+      {
+        'category': '野菜',
+        'name': 'じゃがいも',
+        'base_unit': '個',
+        'calorie': 76,
+        'protein': 1.6,
+        'fat': 0.1,
+        'carbohydrate': 17.6,
+      },
+      {
+        'category': '野菜',
+        'name': '大根',
+        'base_unit': '本',
+        'calorie': 18,
+        'protein': 0.5,
+        'fat': 0.1,
+        'carbohydrate': 4.1,
+      },
+      {
+        'category': '野菜',
+        'name': 'れんこん',
+        'base_unit': '節',
+        'calorie': 66,
+        'protein': 1.9,
+        'fat': 0.1,
+        'carbohydrate': 15.5,
+      },
+      {
+        'category': '野菜',
+        'name': 'ごぼう',
+        'base_unit': '本',
+        'calorie': 58,
+        'protein': 1.8,
+        'fat': 0.1,
+        'carbohydrate': 15.4,
+      },
+
+      // 実野菜・果菜類
+      {
+        'category': '野菜',
+        'name': 'かぼちゃ',
+        'base_unit': '個',
+        'calorie': 78,
+        'protein': 1.9,
+        'fat': 0.3,
+        'carbohydrate': 20.6,
+      },
+      {
+        'category': '野菜',
+        'name': 'トマト',
+        'base_unit': '個',
+        'calorie': 19,
+        'protein': 0.7,
+        'fat': 0.1,
+        'carbohydrate': 4.7,
+      },
+      {
+        'category': '野菜',
+        'name': 'きゅうり',
+        'base_unit': '本',
+        'calorie': 13,
+        'protein': 1.0,
+        'fat': 0.1,
+        'carbohydrate': 3.0,
+      },
+      {
+        'category': '野菜',
+        'name': 'ピーマン',
+        'base_unit': '個',
+        'calorie': 22,
+        'protein': 0.9,
+        'fat': 0.2,
+        'carbohydrate': 5.1,
+      },
+      {
+        'category': '野菜',
+        'name': 'なす',
+        'base_unit': '本',
+        'calorie': 18,
+        'protein': 1.1,
+        'fat': 0.1,
+        'carbohydrate': 5.1,
+      },
+      {
+        'category': '野菜',
+        'name': 'ブロッコリー',
+        'base_unit': '房',
+        'calorie': 33,
+        'protein': 4.3,
+        'fat': 0.5,
+        'carbohydrate': 5.2,
+      },
+      {
+        'category': '野菜',
+        'name': 'アスパラガス',
+        'base_unit': '本',
+        'calorie': 21,
+        'protein': 2.6,
+        'fat': 0.2,
+        'carbohydrate': 3.9,
+      },
+
+      // 葉物野菜
+      {
+        'category': '野菜',
+        'name': 'キャベツ',
+        'base_unit': '玉',
+        'calorie': 23,
+        'protein': 1.3,
+        'fat': 0.2,
+        'carbohydrate': 5.2,
+      },
+      {
+        'category': '野菜',
+        'name': '白菜',
+        'base_unit': '玉',
+        'calorie': 14,
+        'protein': 0.8,
+        'fat': 0.1,
+        'carbohydrate': 3.2,
+      },
+      {
+        'category': '野菜',
+        'name': 'レタス',
+        'base_unit': '玉',
+        'calorie': 12,
+        'protein': 0.6,
+        'fat': 0.1,
+        'carbohydrate': 2.8,
+      },
+      {
+        'category': '野菜',
+        'name': 'サニーレタス',
+        'base_unit': '株',
+        'calorie': 16,
+        'protein': 1.2,
+        'fat': 0.2,
+        'carbohydrate': 3.2,
+      },
+      {
+        'category': '野菜',
+        'name': 'リーフレタス',
+        'base_unit': '株',
+        'calorie': 16,
+        'protein': 1.4,
+        'fat': 0.1,
+        'carbohydrate': 3.3,
+      },
+      {
+        'category': '野菜',
+        'name': 'ほうれん草',
+        'base_unit': '束',
+        'calorie': 20,
+        'protein': 2.2,
+        'fat': 0.4,
+        'carbohydrate': 3.1,
+      },
+      {
+        'category': '野菜',
+        'name': '小松菜',
+        'base_unit': '束',
+        'calorie': 13,
+        'protein': 1.5,
+        'fat': 0.2,
+        'carbohydrate': 2.4,
+      },
+      {
+        'category': '野菜',
+        'name': 'チンゲン菜',
+        'base_unit': '株',
+        'calorie': 9,
+        'protein': 0.6,
+        'fat': 0.1,
+        'carbohydrate': 2.0,
+      },
+      {
+        'category': '野菜',
+        'name': '水菜',
+        'base_unit': '束',
+        'calorie': 23,
+        'protein': 2.2,
+        'fat': 0.1,
+        'carbohydrate': 4.8,
+      },
+      {
+        'category': '野菜',
+        'name': '春菊',
+        'base_unit': '束',
+        'calorie': 20,
+        'protein': 2.3,
+        'fat': 0.3,
+        'carbohydrate': 3.9,
+      },
+      {
+        'category': '野菜',
+        'name': 'ニラ',
+        'base_unit': '束',
+        'calorie': 21,
+        'protein': 1.7,
+        'fat': 0.3,
+        'carbohydrate': 4.0,
+      },
+      {
+        'category': '野菜',
+        'name': 'モロヘイヤ',
+        'base_unit': '束',
+        'calorie': 38,
+        'protein': 4.8,
+        'fat': 0.5,
+        'carbohydrate': 6.3,
+      },
+      {
+        'category': '野菜',
+        'name': '豆苗',
+        'base_unit': '袋',
+        'calorie': 31,
+        'protein': 3.8,
+        'fat': 0.4,
+        'carbohydrate': 4.8,
+      },
+      {
+        'category': '野菜',
+        'name': 'かいわれ大根',
+        'base_unit': 'パック',
+        'calorie': 21,
+        'protein': 2.1,
+        'fat': 0.5,
+        'carbohydrate': 3.3,
+      },
+      {
+        'category': '野菜',
+        'name': '菜の花',
+        'base_unit': '束',
+        'calorie': 33,
+        'protein': 4.4,
+        'fat': 0.2,
+        'carbohydrate': 5.8,
+      },
+
+      // 香味野菜
+      {
+        'category': '野菜',
+        'name': '長ねぎ',
+        'base_unit': '本',
+        'calorie': 35,
+        'protein': 1.4,
+        'fat': 0.1,
+        'carbohydrate': 8.3,
+      },
+      {
+        'category': '野菜',
+        'name': '大葉',
+        'base_unit': '枚',
+        'calorie': 37,
+        'protein': 3.9,
+        'fat': 0.1,
+        'carbohydrate': 7.5,
+      },
+      {
+        'category': '野菜',
+        'name': 'もやし',
+        'base_unit': '袋',
+        'calorie': 14,
+        'protein': 1.7,
+        'fat': 0.1,
+        'carbohydrate': 2.6,
+      },
+
+      // きのこ類
+      {
+        'category': '野菜',
+        'name': 'しめじ',
+        'base_unit': 'パック',
+        'calorie': 18,
+        'protein': 2.7,
+        'fat': 0.6,
+        'carbohydrate': 5.0,
+      },
+      {
+        'category': '野菜',
+        'name': 'えのき',
+        'base_unit': '袋',
+        'calorie': 22,
+        'protein': 2.7,
+        'fat': 0.2,
+        'carbohydrate': 7.6,
+      },
+      {
+        'category': '野菜',
+        'name': 'しいたけ',
+        'base_unit': '個',
+        'calorie': 19,
+        'protein': 3.0,
+        'fat': 0.4,
+        'carbohydrate': 4.9,
+      },
+      {
+        'category': '野菜',
+        'name': 'まいたけ',
+        'base_unit': 'パック',
+        'calorie': 15,
+        'protein': 2.0,
+        'fat': 0.5,
+        'carbohydrate': 4.4,
+      },
+      {
+        'category': '野菜',
+        'name': 'エリンギ',
+        'base_unit': 'パック',
+        'calorie': 19,
+        'protein': 2.8,
+        'fat': 0.4,
+        'carbohydrate': 6.0,
+      },
+      {
+        'category': '野菜',
+        'name': 'なめこ',
+        'base_unit': '袋',
+        'calorie': 15,
+        'protein': 1.7,
+        'fat': 0.2,
+        'carbohydrate': 5.2,
+      },
+      {
+        'category': '野菜',
+        'name': 'マッシュルーム',
+        'base_unit': '個',
+        'calorie': 15,
+        'protein': 2.9,
+        'fat': 0.3,
+        'carbohydrate': 2.1,
+      },
+      {
+        'category': '野菜',
+        'name': 'きくらげ',
+        'base_unit': '袋',
+        'calorie': 13,
+        'protein': 0.6,
+        'fat': 0.2,
+        'carbohydrate': 5.2,
+      },
+      {
+        'category': '野菜',
+        'name': 'ひらたけ',
+        'base_unit': 'パック',
+        'calorie': 20,
+        'protein': 3.3,
+        'fat': 0.3,
+        'carbohydrate': 6.2,
+      },
+      {
+        'category': '野菜',
+        'name': '松茸',
+        'base_unit': '本',
+        'calorie': 23,
+        'protein': 2.0,
+        'fat': 0.6,
+        'carbohydrate': 8.2,
+      },
+      // 肉類
+
+      // 鶏肉
+      {
+        'category': '肉',
+        'name': '鶏むね肉',
+        'base_unit': 'g',
+        'calorie': 108,
+        'protein': 23.3,
+        'fat': 1.9,
+        'carbohydrate': 0,
+      },
+      {
+        'category': '肉',
+        'name': '鶏もも肉',
+        'base_unit': 'g',
+        'calorie': 200,
+        'protein': 16.6,
+        'fat': 14.2,
+        'carbohydrate': 0,
+      },
+      {
+        'category': '肉',
+        'name': 'ささみ',
+        'base_unit': '本',
+        'calorie': 98,
+        'protein': 23.0,
+        'fat': 0.8,
+        'carbohydrate': 0,
+      },
+      {
+        'category': '肉',
+        'name': '手羽先',
+        'base_unit': '本',
+        'calorie': 226,
+        'protein': 17.4,
+        'fat': 16.2,
+        'carbohydrate': 0.0,
+      },
+      {
+        'category': '肉',
+        'name': '手羽元',
+        'base_unit': '本',
+        'calorie': 175,
+        'protein': 18.2,
+        'fat': 10.4,
+        'carbohydrate': 0.0,
+      },
+
+      // 豚肉
+      {
+        'category': '肉',
+        'name': '豚ロース',
+        'base_unit': 'g',
+        'calorie': 242,
+        'protein': 27.0,
+        'fat': 14.0,
+        'carbohydrate': 0,
+      },
+      {
+        'category': '肉',
+        'name': '豚バラ肉',
+        'base_unit': 'g',
+        'calorie': 386,
+        'protein': 14.2,
+        'fat': 34.6,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '肉',
+        'name': '豚こま肉',
+        'base_unit': 'g',
+        'calorie': 236,
+        'protein': 18.5,
+        'fat': 17.2,
+        'carbohydrate': 0.2,
+      },
+
+      // 牛肉
+      {
+        'category': '肉',
+        'name': '牛肩ロース',
+        'base_unit': 'g',
+        'calorie': 250,
+        'protein': 26.0,
+        'fat': 15.0,
+        'carbohydrate': 0,
+      },
+      {
+        'category': '肉',
+        'name': '牛もも肉',
+        'base_unit': 'g',
+        'calorie': 182,
+        'protein': 21.2,
+        'fat': 10.7,
+        'carbohydrate': 0.3,
+      },
+      {
+        'category': '肉',
+        'name': '牛バラ肉',
+        'base_unit': 'g',
+        'calorie': 371,
+        'protein': 14.4,
+        'fat': 32.9,
+        'carbohydrate': 0.2,
+      },
+      {
+        'category': '肉',
+        'name': '牛タン',
+        'base_unit': 'g',
+        'calorie': 269,
+        'protein': 15.2,
+        'fat': 21.7,
+        'carbohydrate': 0.1,
+      },
+
+      // ひき肉
+      {
+        'category': '肉',
+        'name': '鶏ひき肉',
+        'base_unit': 'g',
+        'calorie': 171,
+        'protein': 17.5,
+        'fat': 12.0,
+        'carbohydrate': 0.0,
+      },
+      {
+        'category': '肉',
+        'name': '豚ひき肉',
+        'base_unit': 'g',
+        'calorie': 221,
+        'protein': 18.6,
+        'fat': 15.1,
+        'carbohydrate': 0.0,
+      },
+      {
+        'category': '肉',
+        'name': '牛ひき肉',
+        'base_unit': 'g',
+        'calorie': 251,
+        'protein': 17.1,
+        'fat': 21.1,
+        'carbohydrate': 0.3,
+      },
+      {
+        'category': '肉',
+        'name': '合い挽き肉',
+        'base_unit': 'g',
+        'calorie': 224,
+        'protein': 17.3,
+        'fat': 15.7,
+        'carbohydrate': 0.3,
+      },
+
+      // 内臓・その他
+      {
+        'category': '肉',
+        'name': '砂肝',
+        'base_unit': 'g',
+        'calorie': 86,
+        'protein': 18.3,
+        'fat': 1.8,
+        'carbohydrate': 0.0,
+      },
+      {
+        'category': '肉',
+        'name': 'レバー',
+        'base_unit': 'g',
+        'calorie': 111,
+        'protein': 18.9,
+        'fat': 3.1,
+        'carbohydrate': 0.6,
+      },
+      {
+        'category': '肉',
+        'name': 'ラム肉',
+        'base_unit': 'g',
+        'calorie': 227,
+        'protein': 18.0,
+        'fat': 16.0,
+        'carbohydrate': 0.1,
+      },
+
+      // 加工肉
+      {
+        'category': '肉',
+        'name': 'ベーコン',
+        'base_unit': '枚',
+        'calorie': 405,
+        'protein': 12.9,
+        'fat': 39.1,
+        'carbohydrate': 0.2,
+      },
+      {
+        'category': '肉',
+        'name': 'ウインナー',
+        'base_unit': '本',
+        'calorie': 321,
+        'protein': 11.5,
+        'fat': 30.6,
+        'carbohydrate': 3.0,
+      },
+      {
+        'category': '肉',
+        'name': 'ハム',
+        'base_unit': '枚',
+        'calorie': 196,
+        'protein': 16.5,
+        'fat': 14.5,
+        'carbohydrate': 1.5,
+      },
+      {
+        'category': '肉',
+        'name': 'ローストビーフ',
+        'base_unit': 'g',
+        'calorie': 196,
+        'protein': 21.7,
+        'fat': 11.7,
+        'carbohydrate': 0.9,
+      },
+      // 魚類
+
+      // 切り身・定番魚
+      {
+        'category': '魚',
+        'name': '鮭',
+        'base_unit': '切れ',
+        'calorie': 124,
+        'protein': 22.3,
+        'fat': 4.1,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'マグロ',
+        'base_unit': '切れ',
+        'calorie': 125,
+        'protein': 26.4,
+        'fat': 1.4,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'カツオ',
+        'base_unit': '切れ',
+        'calorie': 105,
+        'protein': 23.6,
+        'fat': 0.8,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'ブリ',
+        'base_unit': '切れ',
+        'calorie': 222,
+        'protein': 21.4,
+        'fat': 17.6,
+        'carbohydrate': 0.3,
+      },
+      {
+        'category': '魚',
+        'name': 'タイ',
+        'base_unit': '切れ',
+        'calorie': 142,
+        'protein': 20.6,
+        'fat': 5.8,
+        'carbohydrate': 0.1,
+      },
+
+      // 青魚
+      {
+        'category': '魚',
+        'name': 'サバ',
+        'base_unit': '切れ',
+        'calorie': 211,
+        'protein': 20.6,
+        'fat': 16.8,
+        'carbohydrate': 0.2,
+      },
+      {
+        'category': '魚',
+        'name': 'アジ',
+        'base_unit': '尾',
+        'calorie': 121,
+        'protein': 20.7,
+        'fat': 4.5,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'イワシ',
+        'base_unit': '尾',
+        'calorie': 146,
+        'protein': 20.9,
+        'fat': 6.5,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'サンマ',
+        'base_unit': '尾',
+        'calorie': 190,
+        'protein': 20.3,
+        'fat': 12.0,
+        'carbohydrate': 0.1,
+      },
+
+      // 白身魚
+      {
+        'category': '魚',
+        'name': 'タラ',
+        'base_unit': '切れ',
+        'calorie': 82,
+        'protein': 18.0,
+        'fat': 0.7,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'ヒラメ',
+        'base_unit': '切れ',
+        'calorie': 91,
+        'protein': 19.2,
+        'fat': 1.2,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'カレイ',
+        'base_unit': '切れ',
+        'calorie': 95,
+        'protein': 19.6,
+        'fat': 1.3,
+        'carbohydrate': 0.1,
+      },
+
+      // 小魚・魚卵
+      {
+        'category': '魚',
+        'name': 'ししゃも',
+        'base_unit': '尾',
+        'calorie': 166,
+        'protein': 21.0,
+        'fat': 8.1,
+        'carbohydrate': 0.2,
+      },
+      {
+        'category': '魚',
+        'name': 'しらす',
+        'base_unit': 'g',
+        'calorie': 113,
+        'protein': 23.1,
+        'fat': 1.6,
+        'carbohydrate': 0.2,
+      },
+      {
+        'category': '魚',
+        'name': '明太子',
+        'base_unit': '本',
+        'calorie': 126,
+        'protein': 21.0,
+        'fat': 3.3,
+        'carbohydrate': 3.0,
+      },
+
+      // 貝・えび・いか・たこ
+      {
+        'category': '魚',
+        'name': 'エビ',
+        'base_unit': '尾',
+        'calorie': 82,
+        'protein': 18.4,
+        'fat': 0.6,
+        'carbohydrate': 0.3,
+      },
+      {
+        'category': '魚',
+        'name': 'イカ',
+        'base_unit': '杯',
+        'calorie': 76,
+        'protein': 17.9,
+        'fat': 0.8,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'たこ',
+        'base_unit': 'g',
+        'calorie': 76,
+        'protein': 16.4,
+        'fat': 0.7,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'ホタテ',
+        'base_unit': '個',
+        'calorie': 72,
+        'protein': 13.5,
+        'fat': 0.9,
+        'carbohydrate': 1.5,
+      },
+      {
+        'category': '魚',
+        'name': 'あさり',
+        'base_unit': '個',
+        'calorie': 30,
+        'protein': 6.0,
+        'fat': 0.3,
+        'carbohydrate': 0.4,
+      },
+      {
+        'category': '魚',
+        'name': '牡蠣',
+        'base_unit': '個',
+        'calorie': 58,
+        'protein': 6.9,
+        'fat': 2.2,
+        'carbohydrate': 4.9,
+      },
+
+      // 缶詰・加工系
+      {
+        'category': '魚',
+        'name': 'ツナ缶',
+        'base_unit': '缶',
+        'calorie': 267,
+        'protein': 17.7,
+        'fat': 21.7,
+        'carbohydrate': 0.1,
+      },
+      {
+        'category': '魚',
+        'name': 'サバ缶',
+        'base_unit': '缶',
+        'calorie': 190,
+        'protein': 20.9,
+        'fat': 10.7,
+        'carbohydrate': 0.2,
+      },
+      {
+        'category': '魚',
+        'name': 'イワシ缶',
+        'base_unit': '缶',
+        'calorie': 146,
+        'protein': 20.9,
+        'fat': 6.5,
+        'carbohydrate': 0.1,
+      },
+      // 乳製品・卵
+      {
+        'category': '乳製品・卵',
+        'name': '牛乳',
+        'base_unit': 'ml',
+        'calorie': 61,
+        'protein': 3.3,
+        'fat': 3.8,
+        'carbohydrate': 4.8,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': 'ヨーグルト',
+        'base_unit': 'g',
+        'calorie': 56,
+        'protein': 3.6,
+        'fat': 3.0,
+        'carbohydrate': 4.9,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': 'チーズ',
+        'base_unit': 'g',
+        'calorie': 313,
+        'protein': 22.7,
+        'fat': 26.0,
+        'carbohydrate': 1.3,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': 'バター',
+        'base_unit': 'g',
+        'calorie': 745,
+        'protein': 0.6,
+        'fat': 81.0,
+        'carbohydrate': 0.2,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': '生クリーム',
+        'base_unit': 'ml',
+        'calorie': 433,
+        'protein': 2.0,
+        'fat': 45.0,
+        'carbohydrate': 3.1,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': '卵',
+        'base_unit': '個',
+        'calorie': 142,
+        'protein': 12.2,
+        'fat': 10.2,
+        'carbohydrate': 0.4,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': '豆腐',
+        'base_unit': '丁',
+        'calorie': 56,
+        'protein': 5.3,
+        'fat': 3.5,
+        'carbohydrate': 2.0,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': '納豆',
+        'base_unit': 'パック',
+        'calorie': 190,
+        'protein': 16.5,
+        'fat': 10.0,
+        'carbohydrate': 12.1,
+      },
+    ];
+
+    for (final ingredient in defaultIngredients) {
+      final existing = await db.query(
+        'ingredient_master',
+        where: 'name = ?',
+        whereArgs: [ingredient['name']],
+        limit: 1,
+      );
+
+      final values = {
+        'category': ingredient['category'],
+        'name': ingredient['name'],
+        'base_unit': ingredient['base_unit'],
+        'calorie': ingredient['calorie'],
+        'protein': ingredient['protein'],
+        'fat': ingredient['fat'],
+        'carbohydrate': ingredient['carbohydrate'],
+        'is_active': 1,
+        'updated_at': now,
+      };
+
+      if (existing.isEmpty) {
+        await db.insert('ingredient_master', {
+          ...values,
+          'created_at': now,
+        });
+      } else {
+        // 既存データにもcategoryを反映する
+        await db.update(
+          'ingredient_master',
+          values,
+          where: 'id = ?',
+          whereArgs: [existing.first['id']],
+        );
+      }
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getIngredientsByCategory(
+    String category,
+  ) async {
+    final db = await instance.database;
+
+    return await db.query(
+      'ingredient_master',
+      where: 'category = ? AND is_active = ?',
+      whereArgs: [category, 1],
+      orderBy: 'id ASC',
+    );
+  }
+
+  Future<int> getFoodQuantityByIngredientId(int ingredientId) async {
+    final db = await instance.database;
+
+    final result = await db.rawQuery(
+      '''
+      SELECT SUM(quantity) AS total
+      FROM foods
+      WHERE ingredient_id = ?
+      ''',
+      [ingredientId],
+    );
+
+    final total = result.first['total'];
+
+    if (total == null) {
+      return 0;
+    }
+
+    return (total as num).toInt();
+  }
+
+  Future<bool> isNearExpire(int ingredientId) async {
+    final db = await instance.database;
+    final now = DateTime.now();
+
+    final result = await db.query(
+      'foods',
+      where: 'ingredient_id = ? AND quantity > 0',
+      whereArgs: [ingredientId],
+    );
+
+    for (final food in result) {
+      final expireDateText = food['expire_date']?.toString();
+
+      if (expireDateText == null || expireDateText.isEmpty) {
+        continue;
+      }
+
+      DateTime? expireDate;
+      try {
+        expireDate = DateTime.parse(expireDateText);
+      } catch (_) {
+        continue;
+      }
+
+      final days = expireDate.difference(now).inDays;
+
+      // 賞味期限3日前〜期限切れ後3日までは赤表示
+      if (days <= 3 && days >= -3) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Future<List<Map<String, dynamic>>> getFoods() async {
+    final db = await instance.database;
+    return await db.query(
+      'foods',
+      orderBy: 'id DESC',
+    );
+  }
+
+  Future<int> insertFood({
+    required int ingredientId,
+    required int quantity,
+    required String unit,
+    required String purchaseDate,
+    required String expireDate,
+    String? memo,
+  }) async {
+    final db = await instance.database;
+    final now = DateTime.now().toIso8601String();
+
+    return await db.insert(
+      'foods',
+      {
+        'ingredient_id': ingredientId,
+        'quantity': quantity,
+        'unit': unit,
+        'purchase_date': purchaseDate,
+        'expire_date': expireDate,
+        'memo': memo,
+        'created_at': now,
+        'updated_at': now,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> getOldestFoodRecord(int ingredientId) async {
+    final db = await instance.database;
+
+    final result = await db.query(
+      'foods',
+      where: 'ingredient_id = ? AND quantity > 0',
+      whereArgs: [ingredientId],
+      orderBy: 'expire_date ASC, id ASC',
+      limit: 1,
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return result.first;
+  }
+
+  Future<List<Map<String, dynamic>>> getFoodHistory(int ingredientId) async {
+    final db = await instance.database;
+
+    return await db.query(
+      'foods',
+      where: 'ingredient_id = ?',
+      whereArgs: [ingredientId],
+      orderBy: 'id DESC',
     );
   }
 

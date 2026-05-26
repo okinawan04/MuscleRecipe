@@ -334,7 +334,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
                                               ),
                                           ],
                                         ),
-                                      )).toList(),
+                                      )),
                                     ],
                                   ),
                                   // Delete button at top right

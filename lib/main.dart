@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 //import 'database_helper.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -11,7 +10,6 @@ import 'screens/account_screen.dart';
 import 'home.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

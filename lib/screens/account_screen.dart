@@ -42,7 +42,7 @@ class _AccountScreenState extends State<AccountScreen> {
   ];
 
   final List<String> _genders = ['男性', '女性', 'その他'];
-  List<String> _trainingGoals = ['がっつり筋トレ', 'ダイエット', '健康'];
+  final List<String> _trainingGoals = ['がっつり筋トレ', 'ダイエット', '健康'];
 
   @override
   void initState() {
@@ -491,7 +491,7 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: tempGender,
+                initialValue: tempGender,
                 decoration: const InputDecoration(
                   labelText: '性別',
                   border: OutlineInputBorder(),

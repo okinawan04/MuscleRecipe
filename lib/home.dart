@@ -183,7 +183,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(width: 8),
                 ...BodyPart.values.map((bodyPart) {
                   return _buildBodyPartButton(bodyPart, bodyPart.displayName);
-                }).toList(),
+                }),
               ],
             ),
           ),
