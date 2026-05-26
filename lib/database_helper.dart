@@ -49,6 +49,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE users (
         id $idType,
+        name $textType,
         height REAL,
         weight $realType,
         age $intType,
