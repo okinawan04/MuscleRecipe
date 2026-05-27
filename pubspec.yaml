@@ -19,7 +19,6 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   uuid: ^4.0.0
-
   google_generative_ai: ^0.4.2
   flutter_dotenv: ^5.1.0
   json_annotation: ^4.8.1
