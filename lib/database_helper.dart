@@ -62,17 +62,16 @@ class DatabaseHelper {
     // 1. ユーザー情報 (PFC計算の基礎データ)
     await db.execute('''
       CREATE TABLE users (
-        id $idType,
-        name $textType,
-        name TEXT,
-        height REAL,
-        weight $realType,
-        age $intType,
-        gender $textType,
-        training_preference $textType,
-        created_at $textType,
-        updated_at $textType
-      )
+  id $idType,
+  name $textType,
+  height REAL,
+  weight $realType,
+  age $intType,
+  gender $textType,
+  training_preference $textType,
+  created_at $textType,
+  updated_at $textType
+)
     ''');
 
     // 2. 食材マスター (栄養素の辞書)
@@ -171,9 +170,8 @@ class DatabaseHelper {
         FOREIGN KEY (menu_id) REFERENCES training_menus (id)
       )
     ''');
-  
 
-  // 初期種目データをtraining_menusに登録
+    // 初期種目データをtraining_menusに登録
     await _seedInitialExercises(db);
   }
 
@@ -210,6 +208,27 @@ class DatabaseHelper {
       ORDER BY f.id DESC
     ''');
   }
+
+  /// AIプロンプト用に冷蔵庫の在庫一覧を文字列化
+Future<String> getInventoryPromptText() async {
+  final foods = await getFoodsWithIngredient();
+
+  if (foods.isEmpty) {
+    return '冷蔵庫に食材がありません。';
+  }
+
+  final buffer = StringBuffer();
+
+  for (final food in foods) {
+    final ingredientName = food['ingredient_name'] ?? '不明';
+    final quantity = food['quantity'] ?? 0;
+    final unit = food['unit'] ?? '';
+
+    buffer.writeln('$ingredientName : $quantity$unit');
+  }
+
+  return buffer.toString();
+}
 
   // ユーザー情報の保存（新規作成または更新）
   Future<int> saveUser({
@@ -274,7 +293,8 @@ class DatabaseHelper {
     final db = await instance.database;
     final now = DateTime.now().toIso8601String();
 
-    final ingredientCount = Sqflite.firstIntValue(
+    final ingredientCount =
+        Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM ingredient_master'),
         ) ??
         0;
@@ -292,7 +312,8 @@ class DatabaseHelper {
       });
     }
 
-    final foodCount = Sqflite.firstIntValue(
+    final foodCount =
+        Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM foods'),
         ) ??
         0;
@@ -309,7 +330,8 @@ class DatabaseHelper {
       });
     }
 
-    final recipeCount = Sqflite.firstIntValue(
+    final recipeCount =
+        Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM recipes'),
         ) ??
         0;
@@ -337,16 +359,13 @@ class DatabaseHelper {
     final now = DateTime.now().toIso8601String();
 
     for (final exercise in exercises) {
-      await db.insert(
-        'training_menus',
-        {
-          'category': exercise.bodyPart.displayName,
-          'name': exercise.name,
-          'is_active': 1,
-          'created_at': now,
-          'updated_at': now,
-        },
-      );
+      await db.insert('training_menus', {
+        'category': exercise.bodyPart.displayName,
+        'name': exercise.name,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+      });
     }
   }
 
@@ -371,23 +390,20 @@ class DatabaseHelper {
     }
 
     // 新規作成
-    return await db.insert(
-      'training_menus',
-      {
-        'category': category,
-        'name': name,
-        'is_active': 1,
-        'created_at': now,
-        'updated_at': now,
-      },
-    );
+    return await db.insert('training_menus', {
+      'category': category,
+      'name': name,
+      'is_active': 1,
+      'created_at': now,
+      'updated_at': now,
+    });
   }
 
   Future<List<Map<String, dynamic>>> getExercises() async {
-  final db = await instance.database;
-  // training_menusテーブルから全てのデータを取得
-  return await db.query('training_menus');
-}
+    final db = await instance.database;
+    // training_menusテーブルから全てのデータを取得
+    return await db.query('training_menus');
+  }
 
   /// トレーニング記録を training_records テーブルに保存
   Future<int> insertTrainingRecord({
@@ -402,29 +418,29 @@ class DatabaseHelper {
     final db = await database;
     final now = DateTime.now().toIso8601String();
 
-    return await db.insert(
-      'training_records',
-      {
-        'menu_id': menuId,
-        'training_date': trainingDate,
-        'set_number': setNumber,
-        'weight': weight,
-        'reps': reps,
-        'rest_seconds': restSeconds ?? 60,
-        'is_completed': 0,
-        'memo': memo,
-        'created_at': now,
-        'updated_at': now,
-      },
-    );
+    return await db.insert('training_records', {
+      'menu_id': menuId,
+      'training_date': trainingDate,
+      'set_number': setNumber,
+      'weight': weight,
+      'reps': reps,
+      'rest_seconds': restSeconds ?? 60,
+      'is_completed': 0,
+      'memo': memo,
+      'created_at': now,
+      'updated_at': now,
+    });
   }
 
   /// 特定の日付のトレーニング記録を取得
-  Future<List<Map<String, dynamic>>> getTrainingRecordsByDate(DateTime date) async {
+  Future<List<Map<String, dynamic>>> getTrainingRecordsByDate(
+    DateTime date,
+  ) async {
     final db = await database;
     final dateString = date.toIso8601String().split('T')[0];
 
-    return await db.rawQuery('''
+    return await db.rawQuery(
+      '''
       SELECT 
         tr.id,
         tr.menu_id,
@@ -441,17 +457,22 @@ class DatabaseHelper {
       JOIN training_menus tm ON tr.menu_id = tm.id
       WHERE tr.training_date LIKE ?
       ORDER BY tr.id, tr.set_number
-    ''', ['$dateString%']);
+    ''',
+      ['$dateString%'],
+    );
   }
 
   /// 指定期間のトレーニング記録を取得
   Future<List<Map<String, dynamic>>> getTrainingRecordsByDateRange(
-      DateTime startDate, DateTime endDate) async {
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     final db = await database;
     final startDateString = startDate.toIso8601String().split('T')[0];
     final endDateString = endDate.toIso8601String().split('T')[0];
 
-    return await db.rawQuery('''
+    return await db.rawQuery(
+      '''
       SELECT 
         tr.id,
         tr.menu_id,
@@ -468,12 +489,16 @@ class DatabaseHelper {
       JOIN training_menus tm ON tr.menu_id = tm.id
       WHERE tr.training_date BETWEEN ? AND ?
       ORDER BY tr.training_date, tr.set_number
-    ''', [startDateString, endDateString]);
+    ''',
+      [startDateString, endDateString],
+    );
   }
 
   /// 指定メニュー・日付のトレーニング記録を削除
   Future<int> deleteTrainingRecordsByMenuIdAndDate(
-      int menuId, String trainingDate) async {
+    int menuId,
+    String trainingDate,
+  ) async {
     final db = await database;
     return await db.delete(
       'training_records',
@@ -482,7 +507,7 @@ class DatabaseHelper {
     );
   }
 
-   /// トレーニング記録を削除
+  /// トレーニング記録を削除
   Future<int> deleteTrainingRecord(int recordId) async {
     final db = await database;
     return await db.delete(
@@ -492,13 +517,13 @@ class DatabaseHelper {
     );
   }
 
-    Future<void> insertDefaultIngredients() async {
+  Future<void> insertDefaultIngredients() async {
     final db = await instance.database;
     final now = DateTime.now().toIso8601String();
 
     final defaultIngredients = [
       // 野菜
-       {
+      {
         'category': '野菜',
         'name': '人参',
         'base_unit': '個',
@@ -1420,10 +1445,7 @@ class DatabaseHelper {
       };
 
       if (existing.isEmpty) {
-        await db.insert('ingredient_master', {
-          ...values,
-          'created_at': now,
-        });
+        await db.insert('ingredient_master', {...values, 'created_at': now});
       } else {
         // 既存データにもcategoryを反映する
         await db.update(
@@ -1507,10 +1529,7 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getFoods() async {
     final db = await instance.database;
-    return await db.query(
-      'foods',
-      orderBy: 'id DESC',
-    );
+    return await db.query('foods', orderBy: 'id DESC');
   }
 
   Future<int> insertFood({
@@ -1524,19 +1543,16 @@ class DatabaseHelper {
     final db = await instance.database;
     final now = DateTime.now().toIso8601String();
 
-    return await db.insert(
-      'foods',
-      {
-        'ingredient_id': ingredientId,
-        'quantity': quantity,
-        'unit': unit,
-        'purchase_date': purchaseDate,
-        'expire_date': expireDate,
-        'memo': memo,
-        'created_at': now,
-        'updated_at': now,
-      },
-    );
+    return await db.insert('foods', {
+      'ingredient_id': ingredientId,
+      'quantity': quantity,
+      'unit': unit,
+      'purchase_date': purchaseDate,
+      'expire_date': expireDate,
+      'memo': memo,
+      'created_at': now,
+      'updated_at': now,
+    });
   }
 
   Future<Map<String, dynamic>?> getOldestFoodRecord(int ingredientId) async {
