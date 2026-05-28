@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/recipe.dart';
+import 'package:muscle_recipe/recipe.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final Recipe recipe;

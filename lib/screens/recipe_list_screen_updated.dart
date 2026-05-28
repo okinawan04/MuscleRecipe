@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../models/recipe.dart';
+import 'package:muscle_recipe/recipe.dart';
 import '../data/recipe_data.dart';
 import '../services/ai_recipe_service.dart';
-import '../data/database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 import 'recipe_detail_screen.dart';
 
 class RecipeListScreen extends StatefulWidget {
@@ -51,20 +51,56 @@ class _RecipeListScreenState extends State<RecipeListScreen> {
       print('🚀 Initializing MuscleRecipe app...');
       
       // サンプル在庫データを挿入（初回のみ）
+      print('📦 Calling insertSampleInventory()...');
       await _db.insertSampleInventory();
+      print('✅ insertSampleInventory() completed');
       
       // 在庫を確認
+      print('🔍 Fetching current inventory...');
       final inventory = await _db.getCurrentInventory();
       print('✅ Inventory loaded: ${inventory.length} items');
+      for (final item in inventory) {
+        print('  - ${item['ingredient_name']}: ${item['quantity']}${item['unit']}');
+      }
+      
+      // プロンプト用テキストを確認
+      print('📝 Generating inventory prompt text...');
+      final promptText = await _db.getInventoryPromptText();
+      print('✅ Inventory prompt text:\n$promptText');
       
       setState(() {
         _errorMessage = null;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Initialization error: $e');
+      print('Stack trace: $stackTrace');
+      
+      final errorMsg = '初期化エラー:\n$e\n\nStack: $stackTrace';
+      
       setState(() {
-        _errorMessage = '初期化に失敗しました: $e';
+        _errorMessage = errorMsg;
       });
+      
+      // エラーダイアログを表示
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('初期化エラー'),
+              content: SingleChildScrollView(
+                child: Text(errorMsg),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        });
+      }
     }
   }
 

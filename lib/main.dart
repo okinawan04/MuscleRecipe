@@ -4,14 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 //import 'screens/training_screen.dart';
-import 'screens/recipe_screen.dart';
 import 'screens/inventory_screen.dart';
 import 'screens/account_screen.dart';
 import 'home.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'screens/recipe_list_screen.dart';
+import 'screens/recipe_list_screen_updated.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

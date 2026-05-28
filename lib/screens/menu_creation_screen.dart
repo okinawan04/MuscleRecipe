@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/training_models.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
-import '../database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 import 'dart:async'; // ★タイマーを使うために必要です
 
 class MenuCreationScreen extends StatefulWidget {

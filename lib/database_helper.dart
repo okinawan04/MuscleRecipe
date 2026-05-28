@@ -1,6 +1,6 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'providers/training_data_provider.dart';
+import 'package:muscle_recipe/providers/training_data_provider.dart';
 
 class DatabaseHelper {
   // シングルトンパターンの設定
@@ -16,7 +16,7 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
+    final dbPath = await getDatabasesPath(;
     final path = join(dbPath, filePath);
 
     return await openDatabase(
@@ -62,16 +62,16 @@ class DatabaseHelper {
     // 1. ユーザー情報 (PFC計算の基礎データ)
     await db.execute('''
       CREATE TABLE users (
-  id $idType,
-  name $textType,
-  height REAL,
-  weight $realType,
-  age $intType,
-  gender $textType,
-  training_preference $textType,
-  created_at $textType,
-  updated_at $textType
-)
+        id $idType,
+        name $textType,
+        height REAL,
+        weight $realType,
+        age $intType,
+        gender $textType,
+        training_preference $textType,
+        created_at $textType,
+        updated_at $textType
+      )
     ''');
 
     // 2. 食材マスター (栄養素の辞書)
@@ -209,26 +209,189 @@ class DatabaseHelper {
     ''');
   }
 
-  /// AIプロンプト用に冷蔵庫の在庫一覧を文字列化
-Future<String> getInventoryPromptText() async {
-  final foods = await getFoodsWithIngredient();
+  // ========================================
+  // 在庫データ取得メソッド (統合分)
+  // ========================================
 
-  if (foods.isEmpty) {
-    return '冷蔵庫に食材がありません。';
+  /// 現在の冷蔵庫在庫を取得
+  Future<List<Map<String, dynamic>>> getCurrentInventory() async {
+    final db = await database;
+
+    try {
+      final results = await db.rawQuery('''
+        SELECT
+          f.id as food_id,
+          im.id as ingredient_id,
+          im.name as ingredient_name,
+          f.quantity,
+          f.unit,
+          im.protein,
+          im.carbohydrate,
+          im.fat,
+          im.calorie,
+          f.expire_date,
+          f.memo
+        FROM foods f
+        JOIN ingredient_master im ON f.ingredient_id = im.id
+        WHERE im.is_active = 1
+        ORDER BY f.expire_date ASC
+      ''');
+
+      return results;
+    } catch (e) {
+      print('❌ Error fetching inventory: $e');
+      return [];
+    }
   }
 
-  final buffer = StringBuffer();
+  /// 在庫データをAIプロンプト用の文字列に変換 (アップデート版を適用)
+  Future<String> getInventoryPromptText() async {
+    final inventory = await getCurrentInventory();
 
-  for (final food in foods) {
-    final ingredientName = food['ingredient_name'] ?? '不明';
-    final quantity = food['quantity'] ?? 0;
-    final unit = food['unit'] ?? '';
+    if (inventory.isEmpty) {
+      return '冷蔵庫には食材がありません。';
+    }
 
-    buffer.writeln('$ingredientName : $quantity$unit');
+    final buffer = StringBuffer('冷蔵庫の在庫:\n');
+    for (final item in inventory) {
+      final name = item['ingredient_name'] ?? '不明';
+      final quantity = item['quantity'] ?? 0;
+      final unit = item['unit'] ?? '';
+      final protein = item['protein'] ?? 0.0;
+      final expireDate = item['expire_date'] ?? '不明';
+
+      buffer.writeln(
+        '- $name ${quantity}${unit} (タンパク質 ${protein}g, 期限: $expireDate)',
+      );
+    }
+
+    return buffer.toString();
   }
 
-  return buffer.toString();
-}
+  /// サンプル在庫データをDBに挿入（開発用）
+  Future<void> insertSampleInventory() async {
+    final db = await database;
+
+    // ingredient_master へのサンプル挿入 (カテゴリ追加対応)
+    final sampleIngredients = [
+      {
+        'category': '肉',
+        'name': '鶏むね肉',
+        'base_unit': 'g',
+        'calorie': 165,
+        'protein': 31.0,
+        'fat': 3.6,
+        'carbohydrate': 0.0,
+      },
+      {
+        'category': '乳製品・卵',
+        'name': '卵',
+        'base_unit': '個',
+        'calorie': 70,
+        'protein': 6.3,
+        'fat': 5.0,
+        'carbohydrate': 0.3,
+      },
+      {
+        'category': '野菜',
+        'name': 'ブロッコリー',
+        'base_unit': 'g',
+        'calorie': 34,
+        'protein': 3.5,
+        'fat': 0.4,
+        'carbohydrate': 6.6,
+      },
+      {
+        'category': '魚',
+        'name': 'サーモン',
+        'base_unit': 'g',
+        'calorie': 208,
+        'protein': 22.0,
+        'fat': 13.0,
+        'carbohydrate': 0.0,
+      },
+      {
+        'category': 'その他',
+        'name': 'ご飯',
+        'base_unit': 'g',
+        'calorie': 130,
+        'protein': 2.5,
+        'fat': 0.3,
+        'carbohydrate': 28.0,
+      },
+    ];
+
+    try {
+      print('📝 Starting sample inventory insertion...');
+      
+      for (final ingredient in sampleIngredients) {
+        final existingCount = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM ingredient_master WHERE name = ?',
+            [ingredient['name']],
+          ),
+        ) ?? 0;
+
+        if (existingCount == 0) {
+          print('  ➕ Inserting ingredient: ${ingredient['name']}');
+          await db.insert('ingredient_master', {
+            ...ingredient,
+            'is_active': 1,
+            'created_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }
+      }
+
+      // foods テーブルへのサンプル挿入
+      final sampleFoods = [
+        {'ingredient_name': '鶏むね肉', 'quantity': 500, 'unit': 'g'},
+        {'ingredient_name': '卵', 'quantity': 6, 'unit': '個'},
+        {'ingredient_name': 'ブロッコリー', 'quantity': 300, 'unit': 'g'},
+        {'ingredient_name': 'サーモン', 'quantity': 200, 'unit': 'g'},
+      ];
+
+      for (final food in sampleFoods) {
+        final ingredientResult = await db.rawQuery(
+          'SELECT id FROM ingredient_master WHERE name = ?',
+          [food['ingredient_name']],
+        );
+
+        if (ingredientResult.isNotEmpty) {
+          final ingredientId = ingredientResult[0]['id'];
+          final existingCount = Sqflite.firstIntValue(
+            await db.rawQuery(
+              'SELECT COUNT(*) FROM foods WHERE ingredient_id = ?',
+              [ingredientId],
+            ),
+          ) ?? 0;
+
+          if (existingCount == 0) {
+            print('  ➕ Inserting food: ${food['ingredient_name']}');
+            await db.insert('foods', {
+              'ingredient_id': ingredientId,
+              'quantity': food['quantity'],
+              'unit': food['unit'],
+              'expire_date': DateTime.now().add(const Duration(days: 7)).toIso8601String().split('T')[0],
+              'memo': 'サンプルデータ',
+              'created_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+      }
+
+      print('✅ Sample inventory inserted successfully');
+    } catch (e, stackTrace) {
+      print('❌ Error inserting sample inventory: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // ユーザー・トレーニング機能群
+  // ========================================
 
   // ユーザー情報の保存（新規作成または更新）
   Future<int> saveUser({
@@ -296,8 +459,8 @@ Future<String> getInventoryPromptText() async {
     final ingredientCount =
         Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM ingredient_master'),
-        ) ??
-        0;
+        ) ?? 0;
+        
     if (ingredientCount == 0) {
       await db.insert('ingredient_master', {
         'category': '肉',
@@ -315,8 +478,8 @@ Future<String> getInventoryPromptText() async {
     final foodCount =
         Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM foods'),
-        ) ??
-        0;
+        ) ?? 0;
+        
     if (foodCount == 0) {
       await db.insert('foods', {
         'ingredient_id': 1,
@@ -333,8 +496,8 @@ Future<String> getInventoryPromptText() async {
     final recipeCount =
         Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM recipes'),
-        ) ??
-        0;
+        ) ?? 0;
+        
     if (recipeCount == 0) {
       await db.insert('recipes', {
         'name': '鶏むね肉の照り焼き',
@@ -516,6 +679,10 @@ Future<String> getInventoryPromptText() async {
       whereArgs: [recordId],
     );
   }
+
+  // ========================================
+  // 食材マスター・食品管理機能群
+  // ========================================
 
   Future<void> insertDefaultIngredients() async {
     final db = await instance.database;

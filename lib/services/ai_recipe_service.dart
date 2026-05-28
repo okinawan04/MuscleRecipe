@@ -1,9 +1,10 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
+import 'dart:math';
 
-import '../models/recipe.dart';
-import '../database_helper.dart';
+import 'package:muscle_recipe/recipe.dart';
+import 'package:muscle_recipe/database_helper.dart';
 
 /// Gemini API を使用してAIレシピを生成するサービス
 /// 
@@ -72,12 +73,19 @@ class AiRecipeService {
 
       // ステップ1: DB から在庫データを取得
       final inventoryText = await _db.getInventoryPromptText();
+      print('📦 Inventory Text: $inventoryText');
+      
+      if (inventoryText.contains('食材がありません')) {
+        print('⚠️ No inventory found!');
+        return [];
+      }
       
       // ステップ2: プロンプトを構築
       final prompt = _buildPrompt(inventoryText, userPreferences);
       
       print('📝 Sending prompt to Gemini API...');
       print('Prompt length: ${prompt.length} chars');
+      print('Prompt preview: ${prompt.substring(0, 200)}...');
 
       // ステップ3: Gemini APIにリクエストを送信
       final content = [Content.text(prompt)];
@@ -90,14 +98,16 @@ class AiRecipeService {
 
       print('✅ Received response from API');
       print('Response length: ${response.text!.length} chars');
+      print('Response preview: ${response.text!.substring(0, 300)}...');
 
       // ステップ4: JSONレスポンスをパース
       final recipes = _parseJsonResponse(response.text!);
       
       print('✅ Successfully generated ${recipes.length} recipes');
       return recipes;
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Error generating recipes: $e');
+      print('Stack trace: $stackTrace');
       return [];
     }
   }
@@ -236,18 +246,25 @@ $inventoryText
       // ステップ1: JSON文字列をクリーニング
       // APIが説明文を含める場合があるため、JSON部分のみを抽出
       String jsonString = _extractJsonFromResponse(responseText);
+      final previewLength = min(300, jsonString.length);
+      print('📄 Extracted JSON: ${jsonString.substring(0, previewLength)}...');
 
       // ステップ2: JSON配列をデコード
       final List<dynamic> jsonList = jsonDecode(jsonString);
+      print('✅ Decoded ${jsonList.length} items from JSON');
 
       // ステップ3: Recipe オブジェクトに変換
       final recipes = Recipe.fromJsonList(jsonList);
 
       print('✅ Parsed ${recipes.length} recipes from API response');
       return recipes;
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Error parsing API response: $e');
-      print('Response text: $responseText');
+      print('Stack trace: $stackTrace');
+      print('Response text length: ${responseText.length}');
+      if (responseText.length < 1000) {
+        print('Full response: $responseText');
+      }
       return [];
     }
   }
@@ -263,6 +280,8 @@ $inventoryText
     final startIndex = text.indexOf('[');
     final endIndex = text.lastIndexOf(']');
 
+    print('🔍 JSON extraction: startIndex=$startIndex, endIndex=$endIndex');
+
     if (startIndex != -1 && endIndex != -1 && startIndex < endIndex) {
       return text.substring(startIndex, endIndex + 1);
     }
@@ -273,6 +292,7 @@ $inventoryText
     if (objStart != -1 && objEnd != -1 && objStart < objEnd) {
       // 単一オブジェクトの場合は配列に変換
       final json = text.substring(objStart, objEnd + 1);
+      print('⚠️ Found single object, wrapping in array');
       return '[$json]';
     }
 

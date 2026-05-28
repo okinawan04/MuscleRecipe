@@ -1,4 +1,4 @@
-import '../models/recipe.dart';
+import 'package:muscle_recipe/recipe.dart';
 
 final List<Recipe> sampleRecipes = [
   Recipe(

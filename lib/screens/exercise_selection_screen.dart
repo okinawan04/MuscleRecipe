@@ -3,7 +3,7 @@ import '../models/training_models.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import 'menu_creation_screen.dart';
-import '../database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 
 class ExerciseSelectionScreen extends StatefulWidget {
   final DateTime? selectedDate;

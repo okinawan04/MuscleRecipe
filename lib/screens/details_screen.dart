@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 
 class DetailsScreen extends StatefulWidget {
   final int ingredientId;

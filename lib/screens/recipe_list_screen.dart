@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/recipe.dart';
+import 'package:muscle_recipe/recipe.dart';
 import '../data/recipe_data.dart';
 import '../services/ai_recipe_service.dart';
 import 'recipe_detail_screen.dart';

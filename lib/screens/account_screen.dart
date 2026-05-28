@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
-import '../database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 
 class AccountScreen extends StatefulWidget {
   final VoidCallback? onLogout;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 
 class RecipeScreen extends StatefulWidget {
   const RecipeScreen({super.key});

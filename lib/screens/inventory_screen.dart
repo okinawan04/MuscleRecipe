@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'details_screen.dart';
-import '../database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});

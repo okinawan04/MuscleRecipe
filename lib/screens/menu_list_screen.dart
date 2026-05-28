@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../constants/app_colors.dart';
-import '../database_helper.dart';
+import 'package:muscle_recipe/database_helper.dart';
 import '../models/training_models.dart' as models;
 import 'exercise_selection_screen.dart';
 import 'menu_creation_screen.dart';
