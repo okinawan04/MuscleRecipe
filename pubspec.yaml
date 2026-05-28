@@ -1,0 +1,37 @@
+name: muscle_recipe
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  image_picker: ^1.0.4
+  shared_preferences: ^2.1.0
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0
+  path: ^1.9.0
+  fl_chart: ^0.68.0
+  intl: ^0.20.0
+  flutter_localizations:
+    sdk: flutter
+  uuid: ^4.0.0
+  google_generative_ai: ^0.4.2
+  flutter_dotenv: ^5.1.0
+  json_annotation: ^4.8.1
+  connectivity_plus: ^5.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env
